@@ -20,11 +20,16 @@ local.properties
 *.so
 *.dylib
 
+# Native libraries
+!external/*.dll
+!external/*.so
+!external/*.dylib
+
 # Secrets
 secrets.properties
 
 # OS
 .DS_Store
 Thumbs.db
-external/
+stuff/
 .kotlin/errors/

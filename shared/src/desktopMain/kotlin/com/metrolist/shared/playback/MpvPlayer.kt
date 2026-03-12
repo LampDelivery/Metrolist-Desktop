@@ -25,22 +25,41 @@ interface MpvLib : Library {
             if (loadedLib != null) return loadedLib
             
             val userDir = System.getProperty("user.dir")
-            val parentDir = File(userDir).parent ?: userDir
-            val rootPath = "C:\\Users\\vigil\\Documents\\Metrolist"
+            // When running from the packaged app, the libraries are usually in the same dir or 'app' dir
+            val appDir = System.getProperty("compose.application.resources.dir")?.let { File(it) }
             
-            val searchPaths = listOf(rootPath, userDir, parentDir)
-            val names = listOf("libmpv-2", "mpv-2", "mpv")
+            val searchPaths = mutableListOf<String>()
+            appDir?.let { searchPaths.add(it.absolutePath) }
+            searchPaths.add(userDir)
+            searchPaths.add(File(userDir, "app").absolutePath)
             
+            // Helpful for development
+            val osName = System.getProperty("os.name").lowercase()
+            if (osName.contains("win")) {
+                // Common Windows search path for dev
+                searchPaths.add("C:\\mpv")
+            }
+
             val combinedPath = searchPaths.joinToString(File.pathSeparator)
             System.setProperty("jna.library.path", combinedPath)
+            
+            val names = when {
+                osName.contains("win") -> listOf("libmpv-2", "mpv-2", "mpv")
+                osName.contains("mac") -> listOf("libmpv.2", "libmpv")
+                else -> listOf("libmpv", "mpv")
+            }
             
             for (name in names) {
                 try {
                     val lib = Native.load(name, MpvLib::class.java) as MpvLib
                     loadedLib = lib
+                    println("Successfully loaded mpv library: $name from paths: $combinedPath")
                     return lib
-                } catch (e: UnsatisfiedLinkError) {}
+                } catch (e: UnsatisfiedLinkError) {
+                    // silent
+                }
             }
+            System.err.println("Failed to load mpv library. Paths searched: $combinedPath")
             return null
         }
     }
@@ -64,7 +83,9 @@ class MpvPlayer {
                     lib.mpv_initialize(it)
                 }
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun play(url: String) {

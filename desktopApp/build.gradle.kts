@@ -109,6 +109,16 @@ compose.desktop {
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"
             
+            modules("javafx.controls", "javafx.graphics", "javafx.web", "javafx.swing", "javafx.media")
+
+            appResources {
+                from(rootProject.file("external")) {
+                    include("*.dll")
+                    include("*.so")
+                    include("*.dylib")
+                }
+            }
+
             windows {
                 menu = true
                 shortcut = true

@@ -34,6 +34,37 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Prepare external libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmpv-dev
+          mkdir -p external
+          cp /usr/lib/x86_64-linux-gnu/libmpv.so external/
+          # Some distros use versioned names, ensure base name exists
+          [ -f /usr/lib/x86_64-linux-gnu/libmpv.so.2 ] && cp /usr/lib/x86_64-linux-gnu/libmpv.so.2 external/libmpv.so
+
+      - name: Prepare external libraries (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install mpv
+          mkdir -p external
+          if [ -f /opt/homebrew/lib/libmpv.dylib ]; then
+            cp /opt/homebrew/lib/libmpv.dylib external/
+          elif [ -f /usr/local/lib/libmpv.dylib ]; then
+            cp /usr/local/lib/libmpv.dylib external/
+          fi
+
+      - name: Prepare external libraries (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path external
+          # Using a known stable release of libmpv for windows
+          $url = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20241229/mpv-dev-x86_64-20241229-git-7db0ba3.7z"
+          curl.exe -L $url -o mpv-dev.7z
+          7z.exe e mpv-dev.7z -oexternal *.dll -r
+
       - name: Grant execute permission for gradlew
         if: runner.os != 'Windows'
         run: chmod +x ./gradlew
@@ -45,4 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: installer-${{ runner.os }}
-          path: desktopApp/build/compose/binaries/main/*/*
+          path: |
+            desktopApp/build/compose/binaries/main/msi/*.msi
+            desktopApp/build/compose/binaries/main/dmg/*.dmg
+            desktopApp/build/compose/binaries/main/deb/*.deb
