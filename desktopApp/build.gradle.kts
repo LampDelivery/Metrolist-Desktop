@@ -141,21 +141,19 @@ compose.desktop {
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"
             
-            modules("javafx.controls", "javafx.graphics", "javafx.web", "javafx.swing", "javafx.media")
-
             appResourcesRootDir.set(syncExternalResources.map { project.layout.projectDirectory.dir(it.destinationDir.absolutePath) })
 
             windows {
                 menu = true
                 shortcut = true
-                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.ico"))
             }
             linux {
-                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.png"))
             }
             macOS {
                 bundleID = "com.metrolist.desktop"
-                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.icns"))
             }
         }
     }
