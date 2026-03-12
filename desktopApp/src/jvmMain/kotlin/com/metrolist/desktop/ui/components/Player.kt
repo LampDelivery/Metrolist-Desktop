@@ -36,7 +36,6 @@ import com.metrolist.desktop.ui.theme.*
 
 @Composable
 fun AnimatedGradientBackground(color: Color) {
-    // Apple Music-style mesh gradient using animated blurred circles
     val infiniteTransition = rememberInfiniteTransition()
     
     val meshColors = remember(color) {
@@ -192,13 +191,11 @@ fun FloatingBottomPlayerContent(colorScheme: ColorScheme) {
 
 @Composable
 fun ExpandedPlayerView(colorScheme: ColorScheme) {
-    // Only apply the gradient background to the main player area, not the sidebar
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val width = maxWidth
         val isNarrow = width < 850.dp
         
         if (AppState.animatedGradient) {
-            // Place the gradient only behind the main player area, not the sidebar
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedGradientBackground(colorScheme.primary)
             }
@@ -335,31 +332,33 @@ private fun ExpandedTabsContent() {
 fun ShareHeartPill(colorScheme: ColorScheme) {
     val shareShape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp, topEnd = 3.dp, bottomEnd = 3.dp)
     val favShape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 50.dp, bottomEnd = 50.dp)
+    
+    val pillBg = colorScheme.onSurface.copy(alpha = 0.08f)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(1.dp) // Tighten gap between pill halves
     ) {
         Surface(
-            modifier = Modifier.height(40.dp),
+            modifier = Modifier.height(36.dp), // Slightly more compact
             shape = shareShape,
-            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.1f)),
-            onClick = { /* TODO: Share logic */ }
+            color = pillBg,
+            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.05f)),
+            onClick = { /* TODO */ }
         ) {
-            Box(modifier = Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                Icon(MetrolistShareIcon, null, modifier = Modifier.size(18.dp), tint = colorScheme.onSurfaceVariant)
+            Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                Icon(MetrolistShareIcon, null, modifier = Modifier.size(16.dp), tint = colorScheme.onSurfaceVariant)
             }
         }
         Surface(
-            modifier = Modifier.height(40.dp),
+            modifier = Modifier.height(36.dp),
             shape = favShape,
-            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.1f)),
-            onClick = { /* TODO: Favorite logic */ }
+            color = pillBg,
+            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.05f)),
+            onClick = { /* TODO */ }
         ) {
-            Box(modifier = Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.FavoriteBorder, null, modifier = Modifier.size(18.dp), tint = colorScheme.onSurfaceVariant)
+            Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.FavoriteBorder, null, modifier = Modifier.size(16.dp), tint = colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -574,7 +573,7 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().background(colorScheme.surfaceContainer)) {
         val width = maxWidth
         val isWide = width > 900.dp
-        val isNarrow = width < 600.dp
+        val isNarrow = width < 650.dp
         
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.fillMaxWidth().height(4.dp)) {
@@ -596,287 +595,152 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
                 )
             }
             
-            Box(
-                modifier = Modifier.fillMaxWidth().height(BottomPlayerHeight).padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val playbackControls = @Composable {
-                    val backInteractionSource = remember { MutableInteractionSource() }
-                    val nextInteractionSource = remember { MutableInteractionSource() }
-                    val playPauseInteractionSource = remember { MutableInteractionSource() }
-
-                    val isBackPressed by backInteractionSource.collectIsPressedAsState()
-                    val isNextPressed by nextInteractionSource.collectIsPressedAsState()
-                    val isPlayPausePressed by playPauseInteractionSource.collectIsPressedAsState()
-
-                    val playPauseWeight by animateFloatAsState(
-                        targetValue = if (isPlayPausePressed) {
-                            1.9f
-                        } else if (isBackPressed || isNextPressed) {
-                            1.1f
-                        } else {
-                            1.3f
-                        },
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
+            val songInfo = @Composable {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.wrapContentWidth()) {
+                    AsyncImage(
+                        url = AppState.currentTrack?.thumbnail ?: "",
+                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
+                        extractColor = true
                     )
-                    val backButtonWeight by animateFloatAsState(
-                        targetValue = if (isBackPressed) {
-                            0.65f
-                        } else if (isPlayPausePressed) {
-                            0.35f
-                        } else {
-                            0.45f
-                        },
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
-                    )
-                    val nextButtonWeight by animateFloatAsState(
-                        targetValue = if (isNextPressed) {
-                            0.65f
-                        } else if (isPlayPausePressed) {
-                            0.35f
-                        } else {
-                            0.45f
-                        },
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
-                    )
-
-                    Row(
-                        modifier = if (isWide) Modifier.width(380.dp) else Modifier.wrapContentWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        FilledIconButton(
-                            onClick = { },
-                            shape = RoundedCornerShape(50),
-                            interactionSource = backInteractionSource,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = colorScheme.surfaceContainerHighest,
-                                contentColor = colorScheme.onSurface
-                            ),
-                            modifier = Modifier
-                                .height(if (isWide) 48.dp else 42.dp)
-                                .then(if (isWide) Modifier.weight(backButtonWeight) else Modifier.size(42.dp))
-                        ) {
-                            Icon(Icons.Outlined.SkipPrevious, null, modifier = Modifier.size(24.dp))
-                        }
-                        
-                        Spacer(Modifier.width(if (isNarrow) 4.dp else 8.dp))
-                        
-                        MetrolistPlayPauseButton(
-                            isPlaying = AppState.isPlaying,
-                            onClick = { AppState.togglePlay() },
-                            colorScheme = colorScheme,
-                            isWide = isWide,
-                            interactionSource = playPauseInteractionSource,
-                            modifier = if (isWide) Modifier.weight(playPauseWeight) else Modifier
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.widthIn(max = 240.dp)) {
+                        Text(
+                            AppState.currentTrack?.title ?: "Not Playing", 
+                            style = if (isNarrow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium, 
+                            fontWeight = FontWeight.Medium, 
+                            maxLines = 1, 
+                            overflow = TextOverflow.Ellipsis
                         )
-                        
-                        Spacer(Modifier.width(if (isNarrow) 4.dp else 8.dp))
-                        
-                        FilledIconButton(
-                            onClick = { },
-                            shape = RoundedCornerShape(50),
-                            interactionSource = nextInteractionSource,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = colorScheme.surfaceContainerHighest,
-                                contentColor = colorScheme.onSurface
-                            ),
-                            modifier = Modifier
-                                .height(if (isWide) 48.dp else 42.dp)
-                                .then(if (isWide) Modifier.weight(nextButtonWeight) else Modifier.size(42.dp))
-                        ) {
-                            Icon(Icons.Outlined.SkipNext, null, modifier = Modifier.size(24.dp))
-                        }
-                        
-                        if (!isNarrow) {
-                            Spacer(Modifier.width(16.dp))
-                            Text(
-                                "${formatTime(playerPosition)} / ${formatTime(playerDuration)}", 
-                                style = MaterialTheme.typography.labelSmall, 
-                                color = colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                val songInfo = @Composable {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            url = AppState.currentTrack?.thumbnail ?: "",
-                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
-                            extractColor = true
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text(
-                                AppState.currentTrack?.title ?: "Not Playing", 
-                                style = if (isNarrow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium, 
-                                fontWeight = FontWeight.Medium, 
-                                maxLines = 1, 
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val artists = AppState.currentTrack?.artists ?: emptyList()
-                            val album = AppState.currentTrack?.album
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                if (isNarrow) {
-                                    artists.forEachIndexed { idx, artist ->
-                                        Text(
-                                            text = artist.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier
-                                                .clickable(enabled = artist.id != null, indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                                                    artist.id?.let { AppState.fetchArtistData(it) }
-                                                }
-                                        )
-                                        if (idx < artists.lastIndex) {
-                                            Text(" / ", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                                        }
+                        val artists = AppState.currentTrack?.artists ?: emptyList()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            artists.forEachIndexed { idx, artist ->
+                                Text(
+                                    text = artist.name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.clickable(enabled = artist.id != null, indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                                        artist.id?.let { AppState.fetchArtistData(it) }
                                     }
-                                } else {
-                                    artists.forEachIndexed { idx, artist ->
-                                        Text(
-                                            text = artist.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier
-                                                .clickable(enabled = artist.id != null, indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                                                    artist.id?.let { AppState.fetchArtistData(it) }
-                                                }
-                                        )
-                                        if (idx < artists.lastIndex) {
-                                            Text(" / ", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                    if (album != null && album.name.isNotBlank()) {
-                                        Text(" • ", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                                        Text(
-                                            text = album.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier
-                                                .clickable(enabled = album.id != null, indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                                                    album.id?.let { AppState.fetchAlbumData(it) }
-                                                }
-                                        )
-                                    }
+                                )
+                                if (idx < artists.lastIndex) {
+                                    Text(" / ", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
-                        if (isWide) {
-                            Spacer(Modifier.width(24.dp))
-                            ShareHeartPill(colorScheme)
-                        }
+                    }
+                    if (width > 700.dp) {
+                        Spacer(Modifier.width(16.dp))
+                        ShareHeartPill(colorScheme)
                     }
                 }
+            }
 
-                if (AppState.swapPlayerControls) {
-                    Box(Modifier.align(Alignment.CenterStart)) { songInfo() }
-                    Box(Modifier.align(Alignment.Center)) { playbackControls() }
-                } else {
-                    Box(Modifier.align(Alignment.CenterStart)) { playbackControls() }
-                    Box(Modifier.align(Alignment.Center)) { songInfo() }
-                }
+            val playbackControls = @Composable {
+                val backInteractionSource = remember { MutableInteractionSource() }
+                val nextInteractionSource = remember { MutableInteractionSource() }
+                val playPauseInteractionSource = remember { MutableInteractionSource() }
 
-                Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-                    if (isWide) {
-                        var isVolumeHovered by remember { mutableStateOf(false) }
-                        
-                        Box(
-                            modifier = Modifier
-                                .onPointerEvent(PointerEventType.Enter) { isVolumeHovered = true }
-                                .onPointerEvent(PointerEventType.Exit) { isVolumeHovered = false }
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                AnimatedVisibility(
-                                    visible = isVolumeHovered, 
-                                    enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End), 
-                                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)
-                                ) {
-                                    MetrolistVolumeSlider(
-                                        value = AppState.volume,
-                                        onValueChange = { AppState.setVolumeLevel(it) },
-                                        modifier = Modifier.width(180.dp).padding(horizontal = 8.dp),
-                                        accentColor = colorScheme.primary,
-                                        showIconInside = false
-                                    )
-                                }
-                                
-                                Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        if (AppState.volume > 0.66f) MetrolistVolumeUpIcon 
-                                        else if (AppState.volume > 0.33f) MetrolistVolumeDownIcon 
-                                        else if (AppState.volume > 0f) MetrolistVolumeMuteIcon
-                                        else MetrolistVolumeOffIcon,
-                                        null, 
-                                        modifier = Modifier.size(20.dp), 
-                                        tint = if (isVolumeHovered) colorScheme.primary else colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        
-                        Spacer(Modifier.width(8.dp))
-                    }
+                val isBackPressed by backInteractionSource.collectIsPressedAsState()
+                val isNextPressed by nextInteractionSource.collectIsPressedAsState()
+                val isPlayPausePressed by playPauseInteractionSource.collectIsPressedAsState()
 
+                val playPauseWeight by animateFloatAsState(
+                    targetValue = if (isPlayPausePressed) 1.9f else if (isBackPressed || isNextPressed) 1.1f else 1.3f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
+                val backButtonWeight by animateFloatAsState(
+                    targetValue = if (isBackPressed) 0.65f else if (isPlayPausePressed) 0.35f else 0.45f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
+                val nextButtonWeight by animateFloatAsState(
+                    targetValue = if (isNextPressed) 0.65f else if (isPlayPausePressed) 0.35f else 0.45f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
+
+                Row(
+                    modifier = if (isWide) Modifier.width(360.dp) else Modifier.wrapContentWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilledIconButton(
+                        onClick = { },
+                        shape = RoundedCornerShape(50),
+                        interactionSource = backInteractionSource,
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = colorScheme.surfaceContainerHighest, contentColor = colorScheme.onSurface),
+                        modifier = Modifier.height(if (isWide) 48.dp else 42.dp).then(if (isWide) Modifier.weight(backButtonWeight) else Modifier.size(42.dp))
+                    ) { Icon(Icons.Outlined.SkipPrevious, null, modifier = Modifier.size(24.dp)) }
+                    
+                    Spacer(Modifier.width(if (isNarrow) 4.dp else 8.dp))
+                    
+                    MetrolistPlayPauseButton(
+                        isPlaying = AppState.isPlaying,
+                        onClick = { AppState.togglePlay() },
+                        colorScheme = colorScheme,
+                        isWide = isWide,
+                        interactionSource = playPauseInteractionSource,
+                        modifier = if (isWide) Modifier.weight(playPauseWeight) else Modifier
+                    )
+                    
+                    Spacer(Modifier.width(if (isNarrow) 4.dp else 8.dp))
+                    
+                    FilledIconButton(
+                        onClick = { },
+                        shape = RoundedCornerShape(50),
+                        interactionSource = nextInteractionSource,
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = colorScheme.surfaceContainerHighest, contentColor = colorScheme.onSurface),
+                        modifier = Modifier.height(if (isWide) 48.dp else 42.dp).then(if (isWide) Modifier.weight(nextButtonWeight) else Modifier.size(42.dp))
+                    ) { Icon(Icons.Outlined.SkipNext, null, modifier = Modifier.size(24.dp)) }
+                    
                     if (!isNarrow) {
-                        AnimatedControlIconButton(
-                            icon = when(AppState.repeatMode) {
-                                RepeatMode.OFF -> Icons.Outlined.Repeat
-                                RepeatMode.ALL -> Icons.Outlined.Repeat
-                                RepeatMode.ONE -> Icons.Outlined.RepeatOne
-                            }, 
-                            onClick = { AppState.repeatMode = RepeatMode.entries[(AppState.repeatMode.ordinal + 1) % 3] }, 
-                            contentColor = if (AppState.repeatMode != RepeatMode.OFF) colorScheme.primary else colorScheme.onSurfaceVariant, 
-                            iconSize = 20.dp
-                        )
-                        
-                        AnimatedControlIconButton(
-                            icon = Icons.Outlined.Shuffle, 
-                            onClick = { AppState.shuffleEnabled = !AppState.shuffleEnabled }, 
-                            contentColor = if (AppState.shuffleEnabled) colorScheme.primary else colorScheme.onSurfaceVariant, 
-                            iconSize = 20.dp
-                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text("${formatTime(playerPosition)} / ${formatTime(playerDuration)}", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
                     }
-                    
-                    val expandInteractionSource = remember { MutableInteractionSource() }
-                    val isExpandPressed by expandInteractionSource.collectIsPressedAsState()
-                    val isExpandHovered by expandInteractionSource.collectIsHoveredAsState()
-                    
-                    val expandRotation by animateFloatAsState(
-                        targetValue = if (AppState.isExpanded) 180f else 0f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
-                    )
-                    
-                    val expandScale by animateFloatAsState(
-                        targetValue = when {
-                            isExpandPressed -> 0.9f
-                            isExpandHovered -> 1.15f
-                            else -> 1f
-                        },
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                    )
+                }
+            }
 
-                    Surface(
-                        onClick = { AppState.isExpanded = !AppState.isExpanded },
-                        modifier = Modifier.size(40.dp).scale(expandScale),
-                        shape = CircleShape,
-                        color = if (isExpandHovered) colorScheme.surfaceVariant else Color.Transparent,
-                        interactionSource = expandInteractionSource
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.KeyboardArrowUp, 
-                                contentDescription = "Toggle Player", 
-                                tint = if (isExpandHovered) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(28.dp).rotate(expandRotation)
-                            )
+            // Fixed Layout: Left (Flexible), Middle (Fixed/Centered), Right (Flexible)
+            Row(
+                modifier = Modifier.fillMaxWidth().height(BottomPlayerHeight).padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Section 1: Left
+                Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
+                    if (AppState.swapPlayerControls) songInfo() else playbackControls()
+                }
+
+                // Section 2: Middle (Strictly Centered)
+                Box(Modifier.wrapContentWidth().fillMaxHeight().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                    if (AppState.swapPlayerControls) playbackControls() else songInfo()
+                }
+
+                // Section 3: Right
+                Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterEnd) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isWide) {
+                            var isVolumeHovered by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.onPointerEvent(PointerEventType.Enter) { isVolumeHovered = true }.onPointerEvent(PointerEventType.Exit) { isVolumeHovered = false }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    AnimatedVisibility(visible = isVolumeHovered, enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End), exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)) {
+                                        MetrolistVolumeSlider(value = AppState.volume, onValueChange = { AppState.setVolumeLevel(it) }, modifier = Modifier.width(180.dp).padding(horizontal = 8.dp), accentColor = colorScheme.primary, showIconInside = false)
+                                    }
+                                    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                        Icon(if (AppState.volume > 0.66f) MetrolistVolumeUpIcon else if (AppState.volume > 0.33f) MetrolistVolumeDownIcon else if (AppState.volume > 0f) MetrolistVolumeMuteIcon else MetrolistVolumeOffIcon, null, modifier = Modifier.size(20.dp), tint = if (isVolumeHovered) colorScheme.primary else colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                        }
+
+                        if (!isNarrow) {
+                            AnimatedControlIconButton(icon = when(AppState.repeatMode) { RepeatMode.OFF -> Icons.Outlined.Repeat; RepeatMode.ALL -> Icons.Outlined.Repeat; RepeatMode.ONE -> Icons.Outlined.RepeatOne }, onClick = { AppState.repeatMode = RepeatMode.entries[(AppState.repeatMode.ordinal + 1) % 3] }, contentColor = if (AppState.repeatMode != RepeatMode.OFF) colorScheme.primary else colorScheme.onSurfaceVariant, iconSize = 20.dp)
+                            AnimatedControlIconButton(icon = Icons.Outlined.Shuffle, onClick = { AppState.shuffleEnabled = !AppState.shuffleEnabled }, contentColor = if (AppState.shuffleEnabled) colorScheme.primary else colorScheme.onSurfaceVariant, iconSize = 20.dp)
+                        }
+                        
+                        val expandRotation by animateFloatAsState(targetValue = if (AppState.isExpanded) 180f else 0f)
+                        IconButton(onClick = { AppState.isExpanded = !AppState.isExpanded }) {
+                            Icon(Icons.Outlined.KeyboardArrowUp, null, tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp).rotate(expandRotation))
                         }
                     }
                 }

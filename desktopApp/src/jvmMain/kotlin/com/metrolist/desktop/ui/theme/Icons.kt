@@ -14,8 +14,6 @@ val MetrolistShareIcon: ImageVector
         viewportHeight = 24f
     ).path(
         fill = SolidColor(Color.White),
-        stroke = SolidColor(Color.Black),
-        strokeLineWidth = 0.8f,
         strokeLineCap = StrokeCap.Butt,
         strokeLineJoin = StrokeJoin.Miter
     ) {
