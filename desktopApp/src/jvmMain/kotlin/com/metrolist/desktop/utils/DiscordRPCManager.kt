@@ -46,7 +46,6 @@ object DiscordRPCManager {
         val now = System.currentTimeMillis()
         val currentPositionSeconds = currentPositionMs / 1000
         
-        // Song duration in seconds.
         val songDuration = song.duration
         val durationSeconds: Long = if (songDuration != null && songDuration > 0) {
             songDuration 
@@ -54,13 +53,13 @@ object DiscordRPCManager {
             AppState.player.duration.value / 1000
         }
         
-        // Logic from pear-desktop: update immediately if song, play state, duration fetch or seek detected
+        // Logic from pear desktop
         val songChanged = song.id != lastSongId
         val playingChanged = isPlaying != lastIsPlaying
         val seeked = !songChanged && kotlin.math.abs(currentPositionSeconds - lastPositionSeconds) > 2
         val durationFetched = !songChanged && lastDurationSeconds == 0L && durationSeconds > 0L
         
-        // Throttle updates (Discord limit is ~15s) unless state changed
+        // updates (Discord limit is ~15s) unless state changed
         if (!songChanged && !playingChanged && !seeked && !durationFetched && (now - lastUpdateMillis < 15000)) {
             return
         }

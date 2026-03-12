@@ -86,7 +86,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
             color = colorScheme.background
         ) {
             Column(Modifier.fillMaxSize()) {
-                // 1. Top Bar (Global Header)
+                // Top Bar 
                 Box(Modifier.fillMaxWidth().zIndex(1f)) {
                     CustomTitleBar(
                         title = currentTitle,
@@ -109,7 +109,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                 }
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // 2. Expandable Sidebar (Left)
+                    // Left Sidebar 
                     val sidebarWidth by animateDpAsState(
                         targetValue = if (isSidebarExpanded) SideRailWidth else SideRailCollapsedWidth,
                         animationSpec = spring(stiffness = Spring.StiffnessLow)
@@ -120,7 +120,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         color = colorScheme.surfaceContainer
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Header: Burger Menu + Text + Optional Edit button
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -265,7 +264,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         }
                     }
 
-                    // 3. Main Content
+                    // Main Content!!
                     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
                             if (AppState.showSignIn) {
@@ -509,7 +508,6 @@ fun TogetherScreen(colorScheme: ColorScheme) {
 fun main() {
     Platform.startup {}
     
-    // Initialize LastFM with API keys from generated BuildConfig
     LastFM.initialize(
         apiKey = BuildConfig.LASTFM_API_KEY,
         secret = BuildConfig.LASTFM_SECRET
@@ -521,7 +519,7 @@ fun main() {
     AppState.loadSession()
     
     application {
-        // Load window state from preferences
+        // Load window state
         val windowPlacement = try {
             WindowPlacement.valueOf(AppState.prefs.get("WINDOW_PLACEMENT", WindowPlacement.Maximized.name))
         } catch (_: Exception) {
@@ -548,7 +546,6 @@ fun main() {
             object : Painter() {
                 override val intrinsicSize: Size = Size(256f, 256f)
                 override fun DrawScope.onDraw() {
-                    // 1. Static flowy gradient background
                     drawCircle(
                         brush = Brush.linearGradient(
                             colors = listOf(
@@ -563,14 +560,12 @@ fun main() {
                         center = center
                     )
                     
-                    // 2. Core solid circle to make it pop
                     drawCircle(
                         color = animatedPrimary,
                         radius = size.minDimension / 2.5f,
                         center = center
                     )
                     
-                    // 3. White logo on top
                     with(logoPainter) {
                         val logoSize = size * 0.55f
                         val offset = Offset((size.width - logoSize.width) / 2f, (size.height - logoSize.height) / 2f)
@@ -584,7 +579,6 @@ fun main() {
 
         Window(
             onCloseRequest = {
-                // Save window state before exiting
                 AppState.prefs.put("WINDOW_PLACEMENT", windowState.placement.name)
                 AppState.prefs.putInt("WINDOW_X", windowState.position.let { if (it is WindowPosition.Absolute) it.x.value.toInt() else 100 })
                 AppState.prefs.putInt("WINDOW_Y", windowState.position.let { if (it is WindowPosition.Absolute) it.y.value.toInt() else 100 })
@@ -599,7 +593,7 @@ fun main() {
             transparent = true,
             icon = dynamicIcon
         ) {
-            // Fix for undecorated window covering taskbar when maximized
+            // Fix maximized issues
             LaunchedEffect(Unit) {
                 try {
                     val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
@@ -630,7 +624,6 @@ fun main() {
             }
             App(
                 onClose = {
-                    // Save window state before exiting
                     AppState.prefs.put("WINDOW_PLACEMENT", windowState.placement.name)
                     AppState.prefs.putInt("WINDOW_X", windowState.position.let { if (it is WindowPosition.Absolute) it.x.value.toInt() else 100 })
                     AppState.prefs.putInt("WINDOW_Y", windowState.position.let { if (it is WindowPosition.Absolute) it.y.value.toInt() else 100 })

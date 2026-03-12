@@ -58,7 +58,6 @@ fun Color.toHsv(): FloatArray {
     val s = if (max == 0f) 0f else d / max
     val v = max
     
-    // Normalize hue to 0..360 and ensure it is never negative
     val normalizedH = (h * 60f + 360f) % 360f
     return floatArrayOf(normalizedH, s, v)
 }

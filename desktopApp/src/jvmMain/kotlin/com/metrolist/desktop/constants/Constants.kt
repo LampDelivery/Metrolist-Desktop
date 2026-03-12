@@ -9,7 +9,6 @@ val ThumbnailCornerRadius = 3.dp
 val ExpandedThumbnailCornerRadius = 8.dp
 val DefaultThemeColor = Color(0xFFED5564)
 
-// Desktop specific dimensions
 val SideRailWidth = 240.dp
 val SideRailCollapsedWidth = 80.dp
 val TopBarHeight = 64.dp

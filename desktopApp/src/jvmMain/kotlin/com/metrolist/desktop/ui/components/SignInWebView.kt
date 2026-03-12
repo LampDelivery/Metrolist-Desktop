@@ -39,12 +39,9 @@ fun EmbeddedSignInView(
                 val webView = WebView()
                 val engine: WebEngine = webView.engine
                 
-                // Using an iPad Chrome User-Agent is the most reliable way to bypass Google's 
-                // "insecure browser" block in embedded WebViews, as Google allows this specific
-                // combination for compatibility with iOS/iPadOS apps.
+                // annoying crap (thanks google)
                 engine.userAgent = "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.89 Mobile/15E148 Safari/604.1"
                 
-                // Using the exact URL used in the Android app for maximum consistency
                 engine.load("https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com")
 
                 engine.loadWorker.stateProperty().addListener { _, _, newState ->
@@ -68,7 +65,7 @@ fun EmbeddedSignInView(
                                     )
                                 }
                             } catch (e: Exception) {
-                                // Script might fail on certain intermediate pages, ignore
+                                // might fail on some pages, ignore
                             }
                         }
                     }

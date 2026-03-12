@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// Approximate Material3 Expressive Wavy Indicator since it's not yet in the standard Compose Desktop libraries
 @Composable
 fun WavySlider(
     value: Float,
@@ -109,7 +108,7 @@ fun WavySlider(
             val waveLength = 40.dp.toPx()
             val amplitude = 6.dp.toPx() * animatedAmplitude
             
-            // Draw inactive track (straight line)
+            // when inactive
             drawLine(
                 color = inactiveColor,
                 start = Offset(progressPx, centerY),
@@ -118,7 +117,7 @@ fun WavySlider(
                 cap = StrokeCap.Round
             )
             
-            // Draw active track (wavy line)
+            // when active
             val path = androidx.compose.ui.graphics.Path()
             path.moveTo(0f, centerY)
             
@@ -135,7 +134,7 @@ fun WavySlider(
                 style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
             )
             
-            // Thumb
+            // Thumb (might rework later)
             drawCircle(
                 color = thumbColor,
                 radius = thumbRadiusPx,

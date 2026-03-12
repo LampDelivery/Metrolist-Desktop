@@ -36,10 +36,9 @@ fun ArtistScreen(artistId: String, colorScheme: ColorScheme) {
         val artistInfo = AppState.artistData["header"]?.firstOrNull() as? ArtistItem
         
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            // Artist Header with Banner
+            // Header with Banner
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
-                    // Banner Image with fading effect
                     if (artistInfo?.banner != null) {
                         AsyncImage(
                             url = artistInfo.banner!!,
@@ -48,7 +47,6 @@ fun ArtistScreen(artistId: String, colorScheme: ColorScheme) {
                         )
                     }
                     
-                    // Dark gradient overlay for text readability
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -60,7 +58,7 @@ fun ArtistScreen(artistId: String, colorScheme: ColorScheme) {
                             )
                     )
                     
-                    // Artist info text & buttons
+                    // Artist info text and buttons
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomStart)

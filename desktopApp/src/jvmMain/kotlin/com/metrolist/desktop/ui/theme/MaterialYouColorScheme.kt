@@ -6,7 +6,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import kotlin.math.roundToInt
 
-// Minimal Material You (TonalSpot) color utilities for JVM Compose
 // Reference: https://github.com/material-foundation/material-color-utilities
 
 object MaterialYouColorScheme {
@@ -27,11 +26,7 @@ object MaterialYouColorScheme {
         return (a shl 24) or (r shl 16) or (g shl 8) or b
     }
 
-    // --- Minimal TonalSpot implementation for Material You ---
-    // This is a simplified version for Compose JVM, matching Android's materialkolor
-    // For full fidelity, use the official color utilities if available
-
-    // Helper: Convert Compose Color to HCT (Hue, Chroma, Tone)
+    // Helper: Convert Compose Color to HCT
     private fun colorToHct(color: Color): FloatArray {
         val r = color.red
         val g = color.green
@@ -50,9 +45,8 @@ object MaterialYouColorScheme {
         return floatArrayOf((h + 360f) % 360f, s * 100f, l * 100f)
     }
 
-    // Helper: Convert HCT to Compose Color (approximate)
+    // Convert HCT to Compose Color
     private fun hctToColor(hue: Float, chroma: Float, tone: Float): Color {
-        // This is a rough approximation using HSL, not true HCT
         val c = (1f - Math.abs(2 * (tone / 100f) - 1f)) * (chroma / 100f)
         val x = c * (1f - Math.abs((hue / 60f) % 2 - 1f))
         val m = (tone / 100f) - c / 2f
@@ -67,13 +61,12 @@ object MaterialYouColorScheme {
         return Color((r1 + m).coerceIn(0f, 1f), (g1 + m).coerceIn(0f, 1f), (b1 + m).coerceIn(0f, 1f), 1f)
     }
 
-    // Generate a dark Material You color scheme from a seed color
+    // Generate from a seed color
     fun darkScheme(seed: Color): ColorScheme {
         val hct = colorToHct(seed)
         val hue = hct[0]
-        val chroma = hct[1].coerceIn(16f, 48f) // Material You typical chroma range
+        val chroma = hct[1].coerceIn(16f, 48f) 
 
-        // TonalSpot palette mapping (approximate)
         val primary = hctToColor(hue, chroma, 80f)
         val onPrimary = hctToColor(hue, 8f, 20f)
         val primaryContainer = hctToColor(hue, chroma, 30f)
@@ -115,7 +108,7 @@ object MaterialYouColorScheme {
         )
     }
 
-    // (Optional) Light scheme for completeness
+    // Light mode, unused
     fun lightScheme(seed: Color): ColorScheme {
         val hct = colorToHct(seed)
         val hue = hct[0]

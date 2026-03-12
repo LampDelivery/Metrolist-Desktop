@@ -110,7 +110,7 @@ fun WindowScope.CustomTitleBar(
 
                     DropdownMenu(
                         expanded = isSearchFocused && AppState.searchHistory.isNotEmpty(),
-                        onDismissRequest = { }, // Handled by focus
+                        onDismissRequest = { }, 
                         properties = androidx.compose.ui.window.PopupProperties(focusable = false),
                         modifier = Modifier.width(240.dp).background(colorScheme.surfaceContainerHigh)
                     ) {
@@ -146,13 +146,11 @@ fun WindowScope.CustomTitleBar(
                                 shape = CircleShape
                             )
                             
-                            // Ported Android-style Profile Menu
                             DropdownMenu(
                                 expanded = expanded, 
                                 onDismissRequest = { expanded = false },
                                 modifier = Modifier.width(300.dp).background(colorScheme.surfaceContainerHigh)
                             ) {
-                                // User Identity Header
                                 Row(
                                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
