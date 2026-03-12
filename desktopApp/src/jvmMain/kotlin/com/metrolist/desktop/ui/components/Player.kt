@@ -36,14 +36,19 @@ import com.metrolist.desktop.ui.theme.*
 
 @Composable
 fun AnimatedGradientBackground(color: Color) {
-    // Apple Music-style mesh gradient using animated blurred circles (desktop-only, no Android dependencies)
+    // Apple Music-style mesh gradient using animated blurred circles
     val infiniteTransition = rememberInfiniteTransition()
-    val meshColors = listOf(
-        color,
-        color.copy(red = (color.red * 0.7f + 0.2f).coerceIn(0f, 1f), green = (color.green * 0.8f + 0.1f).coerceIn(0f, 1f), blue = (color.blue * 1.1f).coerceIn(0f, 1f)),
-        Color(0xFF6A5ACD), // Slate Blue
-        Color(0xFF00BFFF)  // Deep Sky Blue
-    )
+    
+    val meshColors = remember(color) {
+        val hsv = color.toHsv()
+        listOf(
+            color,
+            Color.hsv((hsv[0] + 25f) % 360f, (hsv[1] * 0.85f).coerceIn(0f, 1f), (hsv[2] * 0.8f).coerceIn(0f, 1f)),
+            Color.hsv((hsv[0] - 35f + 360f) % 360f, (hsv[1] * 0.75f).coerceIn(0f, 1f), (hsv[2] * 0.7f).coerceIn(0f, 1f)),
+            Color.hsv((hsv[0] + 15f) % 360f, (hsv[1] * 0.65f).coerceIn(0f, 1f), (hsv[2] * 0.6f).coerceIn(0f, 1f))
+        )
+    }
+
     val params = List(meshColors.size) { i ->
         val x by infiniteTransition.animateFloat(
             initialValue = -0.35f + i * 0.25f,
