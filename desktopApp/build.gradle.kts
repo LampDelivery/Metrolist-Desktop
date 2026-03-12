@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.JavaExec
 
 val javafxVersion = "21"
 val platform = org.gradle.internal.os.OperatingSystem.current().let {
@@ -123,6 +124,17 @@ val syncExternalResources by tasks.registering(Sync::class) {
     from(rootProject.file("external")) {
         include("*.dylib")
         into("macos")
+    }
+}
+
+// Ensure the desktop app runs with settings that work reliably on Linux Wayland compositors
+// by forcing the GTK/JavaFX stack to use the X11 backend (via Xwayland) and a safe Skiko render API.
+tasks.withType<JavaExec>().configureEach {
+    if (platform == "linux") {
+        environment("LC_NUMERIC", "C")
+        environment("GDK_BACKEND", "x11")
+        environment("_JAVA_AWT_WM_NONREPARENTING", "1")
+        environment("SKIKO_RENDER_API", "SOFTWARE")
     }
 }
 
