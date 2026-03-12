@@ -11,14 +11,17 @@ kotlin {
     
     jvmToolchain(21)
 
-    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
-        compilations["main"].kotlinOptions.freeCompilerArgs += "-Xexpect-actual-classes"
+    targets.all {
+        compilations.all {
+            kotlinOptions {
+                freeCompilerArgs += "-Xexpect-actual-classes"
+            }
+        }
     }
     
     sourceSets {
         all {
             languageSettings.optIn("kotlin.RequiresOptIn")
-            languageSettings.freeCompilerArgs += "-Xexpect-actual-classes"
         }
         val commonMain by getting {
             dependencies {
@@ -48,10 +51,6 @@ kotlin {
             }
         }
     }
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.freeCompilerArgs += "-Xexpect-actual-classes"
 }
 
 android {
