@@ -40,9 +40,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libmpv-dev
           mkdir -p external
-          cp /usr/lib/x86_64-linux-gnu/libmpv.so external/
-          # Some distros use versioned names, ensure base name exists
-          [ -f /usr/lib/x86_64-linux-gnu/libmpv.so.2 ] && cp /usr/lib/x86_64-linux-gnu/libmpv.so.2 external/libmpv.so
+          if [ -f /usr/lib/x86_64-linux-gnu/libmpv.so ]; then
+            cp /usr/lib/x86_64-linux-gnu/libmpv.so external/
+          fi
+          # Fallback for versioned names
+          find /usr/lib/x86_64-linux-gnu -name "libmpv.so*" -exec cp {} external/libmpv.so \;
 
       - name: Prepare external libraries (macOS)
         if: runner.os == 'macOS'
@@ -60,9 +62,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path external
-          # Using a known stable release of libmpv for windows
-          $url = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20241229/mpv-dev-x86_64-20241229-git-7db0ba3.7z"
-          curl.exe -L $url -o mpv-dev.7z
+          # Fetch the latest release URL dynamically from shinchiro's repo
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest"
+          $asset = $release.assets | Where-Object { $_.name -like "mpv-dev-x86_64-*" } | Select-Object -First 1
+          if ($null -eq $asset) { throw "Could not find mpv-dev asset" }
+          $url = $asset.browser_download_url
+          Write-Host "Downloading from $url"
+          Invoke-WebRequest -Uri $url -OutFile mpv-dev.7z
           7z.exe e mpv-dev.7z -oexternal *.dll -r
 
       - name: Grant execute permission for gradlew
