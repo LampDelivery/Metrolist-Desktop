@@ -21,6 +21,7 @@ actual class MusicPlayer actual constructor() {
     actual fun play(song: SongItem, url: String) {
         _currentSong.value = song
         _isPlaying.value = true
+        // TODO: Implement ExoPlayer logic
     }
 
     actual fun pause() {
@@ -41,8 +42,14 @@ actual class MusicPlayer actual constructor() {
     }
 
     actual fun setVolume(level: Int) {
+        // TODO: Implement volume logic
     }
 
     actual fun setQueue(songs: List<SongItem>, startPlaying: Boolean) {
+        // TODO: Implement queue logic
+    }
+
+    actual fun release() {
+        stop()
     }
 }

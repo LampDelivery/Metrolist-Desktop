@@ -1,3 +1,4 @@
+@file:Suppress("UNUSED_VARIABLE", "NAME_SHADOWING", "UNUSED_PARAMETER")
 package com.metrolist.desktop.state
 
 import androidx.compose.runtime.getValue

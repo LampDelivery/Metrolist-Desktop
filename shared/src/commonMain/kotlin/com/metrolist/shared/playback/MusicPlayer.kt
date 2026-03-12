@@ -1,3 +1,4 @@
+@file:Suppress("UNUSED_PARAMETER")
 package com.metrolist.shared.playback
 
 import com.metrolist.shared.model.SongItem
@@ -11,6 +12,7 @@ expect class MusicPlayer() {
     fun seekTo(position: Long)
     fun setVolume(level: Int)
     fun setQueue(songs: List<SongItem>, startPlaying: Boolean = false)
+    fun release()
 
     val currentSong: StateFlow<SongItem?>
     val isPlaying: StateFlow<Boolean>

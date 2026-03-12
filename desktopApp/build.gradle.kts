@@ -94,6 +94,25 @@ val generateConfig by tasks.registering {
     }
 }
 
+// Task to prepare the resources directory for native distributions
+val syncExternalResources by tasks.registering(Sync::class) {
+    val destination = layout.buildDirectory.dir("native-resources")
+    into(destination)
+    
+    from(rootProject.file("external")) {
+        include("*.dll")
+        into("windows")
+    }
+    from(rootProject.file("external")) {
+        include("*.so")
+        into("linux")
+    }
+    from(rootProject.file("external")) {
+        include("*.dylib")
+        into("macos")
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "com.metrolist.desktop.MainKt"
@@ -111,13 +130,7 @@ compose.desktop {
             
             modules("javafx.controls", "javafx.graphics", "javafx.web", "javafx.swing", "javafx.media")
 
-            appResources {
-                from(rootProject.file("external")) {
-                    include("*.dll")
-                    include("*.so")
-                    include("*.dylib")
-                }
-            }
+            appResourcesRootDir.set(syncExternalResources.map { project.layout.projectDirectory.dir(it.destinationDir.absolutePath) })
 
             windows {
                 menu = true

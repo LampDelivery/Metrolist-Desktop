@@ -585,6 +585,10 @@ fun main() {
                 AppState.prefs.putInt("WINDOW_WIDTH", windowState.size.width.value.toInt())
                 AppState.prefs.putInt("WINDOW_HEIGHT", windowState.size.height.value.toInt())
                 AppState.prefs.flush()
+                
+                // Properly release player resources
+                AppState.player.release()
+                
                 exitApplication()
             },
             title = "Metrolist",
@@ -630,6 +634,10 @@ fun main() {
                     AppState.prefs.putInt("WINDOW_WIDTH", windowState.size.width.value.toInt())
                     AppState.prefs.putInt("WINDOW_HEIGHT", windowState.size.height.value.toInt())
                     AppState.prefs.flush()
+                    
+                    // Properly release player resources
+                    AppState.player.release()
+                    
                     exitApplication()
                 },
                 onMinimize = { windowState.isMinimized = true },

@@ -1,3 +1,4 @@
+@file:Suppress("UNUSED_PARAMETER")
 package com.metrolist.shared.playback
 
 import com.metrolist.shared.model.SongItem
@@ -11,13 +12,13 @@ actual class MusicPlayer actual constructor() {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val _currentSong = MutableStateFlow<SongItem?>(null)
-    actual val currentSong = _currentSong.asStateFlow()
+    actual val currentSong: StateFlow<SongItem?> = _currentSong.asStateFlow()
 
     private val _currentPosition = MutableStateFlow(0L)
-    actual val currentPosition = _currentPosition.asStateFlow()
+    actual val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
 
     private val _duration = MutableStateFlow(0L)
-    actual val duration = _duration.asStateFlow()
+    actual val duration: StateFlow<Long> = _duration.asStateFlow()
 
     actual val isPlaying: StateFlow<Boolean> = mpvPlayer.isPlaying
 
@@ -65,6 +66,11 @@ actual class MusicPlayer actual constructor() {
     }
 
     actual fun setQueue(songs: List<SongItem>, startPlaying: Boolean) {
-        // TODO: Implement queue logic
+        // Required by expect declaration
+    }
+
+    actual fun release() {
+        mpvPlayer.release()
+        scope.cancel()
     }
 }
