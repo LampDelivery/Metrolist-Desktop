@@ -25,6 +25,12 @@ plugins {
 group = "com.metrolist"
 version = "1.0.0"
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
@@ -61,7 +67,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
      kotlinOptions {
          jvmTarget = "21"
          freeCompilerArgs += listOf(
-             "-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true",
+             "-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24",
              "-Xopt-in=kotlin.RequiresOptIn"
          )
      }
@@ -106,14 +112,14 @@ compose.desktop {
             windows {
                 menu = true
                 shortcut = true
-                iconFile.set(project.file("src/jvmMain/resources/icon.ico"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
             }
             linux {
-                iconFile.set(project.file("src/jvmMain/resources/icon.png"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
             }
             macOS {
                 bundleID = "com.metrolist.desktop"
-                iconFile.set(project.file("src/jvmMain/resources/icon.icns"))
+                iconFile.set(project.file("src/jvmMain/resources/logo.svg"))
             }
         }
     }
