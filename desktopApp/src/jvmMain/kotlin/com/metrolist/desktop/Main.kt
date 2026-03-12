@@ -28,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.window.*
 import androidx.compose.ui.zIndex
 import java.awt.event.WindowAdapter
@@ -51,6 +53,7 @@ import kotlinx.coroutines.launch
 import com.metrolist.shared.model.*
 import com.metrolist.shared.api.lastfm.LastFM
 import com.metrolist.desktop.state.AppState
+import com.metrolist.desktop.state.GlobalYouTubeRepository
 import com.metrolist.desktop.state.NavItem
 import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
@@ -58,10 +61,14 @@ import com.metrolist.desktop.ui.components.*
 import com.metrolist.desktop.ui.screens.*
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import java.awt.GraphicsEnvironment
+import java.awt.Rectangle
+import androidx.compose.ui.platform.LocalFocusManager
 
 @Composable
 fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () -> Unit) {
     val animatedPrimary by animateColorAsState(targetValue = AppState.seedColor, animationSpec = tween(1000))
+    val focusManager = LocalFocusManager.current
     
     MetrolistTheme(seedColor = animatedPrimary) {
         val colorScheme = MaterialTheme.colorScheme
@@ -75,8 +82,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
         val scope = rememberCoroutineScope()
 
         val visibleItems = if (AppState.isEditingSidebar) AppState.sidebarNavItems else AppState.sidebarNavItems.filter { it.visible }
-
-        // Only use the label of the currently selected tab for the title
         val currentTitle = if (AppState.showIntegrations) "Integrations" else visibleItems.getOrNull(selectedNavIndex)?.label ?: "Metrolist"
 
         Surface(
@@ -95,9 +100,10 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         onSearchChange = { 
                             searchText = it
                             if (it.length > 2) {
+                                AppState.isExpanded = false // Collapse player on search
                                 scope.launch { 
                                     try { 
-                                        searchTracks = AppState.repository.search(it)
+                                        searchTracks = GlobalYouTubeRepository.instance.search(it)
                                     } catch (_: Exception) {} 
                                 }
                             } 
@@ -109,11 +115,12 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                 }
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // Left Sidebar 
-                    val sidebarWidth by animateDpAsState(
-                        targetValue = if (isSidebarExpanded) SideRailWidth else SideRailCollapsedWidth,
-                        animationSpec = spring(stiffness = Spring.StiffnessLow)
+                    val expansionProgress by animateFloatAsState(
+                        targetValue = if (isSidebarExpanded) 1f else 0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
                     )
+                    
+                    val sidebarWidth = lerp(SideRailCollapsedWidth, SideRailWidth, expansionProgress)
                     
                     Surface(
                         modifier = Modifier.fillMaxHeight().width(sidebarWidth),
@@ -121,35 +128,36 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                                modifier = Modifier.fillMaxWidth().height(TopBarHeight),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                IconButton(onClick = { 
-                                    isSidebarExpanded = !isSidebarExpanded 
-                                    if (!isSidebarExpanded) AppState.isEditingSidebar = false
-                                }) {
-                                    Icon(Icons.Default.Menu, contentDescription = "Toggle Sidebar", tint = colorScheme.onSurfaceVariant)
+                                Box(modifier = Modifier.width(SideRailCollapsedWidth), contentAlignment = Alignment.Center) {
+                                    IconButton(onClick = { 
+                                        isSidebarExpanded = !isSidebarExpanded 
+                                        if (!isSidebarExpanded) AppState.isEditingSidebar = false
+                                        focusManager.clearFocus()
+                                    }) {
+                                        Icon(Icons.Default.Menu, contentDescription = "Toggle Sidebar", tint = colorScheme.onSurfaceVariant)
+                                    }
                                 }
                                 
-                                AnimatedVisibility(
-                                    visible = isSidebarExpanded,
-                                    enter = fadeIn() + expandHorizontally(),
-                                    exit = fadeOut() + shrinkHorizontally()
-                                ) {
-                                    Text(
-                                        "Metrolist",
-                                        modifier = Modifier.padding(start = 8.dp),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colorScheme.onSurface
-                                    )
-                                }
+                                Text(
+                                    "Metrolist",
+                                    modifier = Modifier.padding(start = 4.dp).alpha(expansionProgress),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface,
+                                    maxLines = 1
+                                )
 
                                 if (isSidebarExpanded) {
                                     Spacer(Modifier.weight(1f))
                                     IconButton(
-                                        onClick = { AppState.isEditingSidebar = !AppState.isEditingSidebar },
-                                        modifier = Modifier.padding(end = 8.dp)
+                                        onClick = { 
+                                            AppState.isEditingSidebar = !AppState.isEditingSidebar 
+                                            focusManager.clearFocus()
+                                        },
+                                        modifier = Modifier.padding(end = 8.dp).alpha(expansionProgress)
                                     ) {
                                         Icon(
                                             if (AppState.isEditingSidebar) Icons.Default.Check else Icons.Default.Edit, 
@@ -206,19 +214,22 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                     visibleItems.forEachIndexed { idx, navItem ->
                                         val icons = iconMap[navItem.id] ?: (Icons.Default.QuestionMark to Icons.Default.QuestionMark)
                                         SidebarNavItem(
-                                            selected = selectedNavIndex == idx && !AppState.showSignIn && !AppState.showSettings && !AppState.showIntegrations && AppState.selectedArtistId == null && AppState.selectedPlaylistId == null,
+                                            selected = selectedNavIndex == idx && !AppState.showSignIn && !AppState.showSettings && !AppState.showIntegrations && AppState.selectedArtistId == null && AppState.selectedPlaylistId == null && AppState.selectedAlbumId == null,
                                             onClick = { 
+                                                AppState.isExpanded = false // Collapse player on tab switch
                                                 selectedNavIndex = idx
                                                 AppState.showSignIn = false
                                                 AppState.showSettings = false
                                                 AppState.showIntegrations = false
                                                 AppState.selectedArtistId = null
                                                 AppState.selectedPlaylistId = null
+                                                AppState.selectedAlbumId = null
                                                 searchText = ""
+                                                focusManager.clearFocus()
                                             },
                                             icon = if (selectedNavIndex == idx && !AppState.showSettings && !AppState.showIntegrations) icons.second else icons.first,
                                             label = navItem.label,
-                                            isExpanded = isSidebarExpanded,
+                                            expansionProgress = expansionProgress,
                                             colorScheme = colorScheme
                                         )
                                     }
@@ -228,13 +239,15 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             if (isSidebarExpanded && !AppState.isEditingSidebar) {
                                 Spacer(Modifier.height(16.dp))
                                 
-                                // New Playlist Button
                                 Surface(
                                     modifier = Modifier
                                         .padding(horizontal = 16.dp)
                                         .fillMaxWidth()
                                         .height(48.dp)
-                                        .clickable { },
+                                        .alpha(expansionProgress)
+                                        .clickable { 
+                                            focusManager.clearFocus()
+                                        },
                                     color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     shape = RoundedCornerShape(24.dp)
                                 ) {
@@ -244,16 +257,16 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                     ) {
                                         Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp), tint = colorScheme.onSurface)
                                         Spacer(Modifier.width(12.dp))
-                                        Text("New playlist", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
+                                        Text("New playlist", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface, maxLines = 1)
                                     }
                                 }
 
                                 Spacer(Modifier.height(8.dp))
                                 
-                                LazyColumn(modifier = Modifier.weight(1f)) {
+                                LazyColumn(modifier = Modifier.weight(1f).alpha(expansionProgress)) {
                                     val playlistItems = AppState.librarySections["Library"]?.filterIsInstance<PlaylistItem>() ?: emptyList()
                                     items(playlistItems) { playlist ->
-                                        SidebarPlaylistEntry(playlist, colorScheme)
+                                        SidebarPlaylistEntry(playlist, colorScheme, onClick = { focusManager.clearFocus() })
                                     }
                                 }
                             } else {
@@ -264,8 +277,11 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         }
                     }
 
-                    // Main Content!!
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    // Main Content
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { focusManager.clearFocus() }) {
                         Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
                             if (AppState.showSignIn) {
                                 EmbeddedSignInView(
@@ -282,6 +298,9 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             }
                             else if (AppState.selectedPlaylistId != null) {
                                 PlaylistScreen(AppState.selectedPlaylistId!!, colorScheme)
+                            }
+                            else if (AppState.selectedAlbumId != null) {
+                                AlbumScreen(AppState.selectedAlbumId!!, colorScheme)
                             }
                             else if (searchText.isNotEmpty()) SearchResultsList(searchTracks, colorScheme)
                             else {
@@ -317,6 +336,71 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                     StandardBottomPlayer(colorScheme)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SidebarNavItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    expansionProgress: Float,
+    colorScheme: ColorScheme
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(SideRailCollapsedWidth)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(if (selected) colorScheme.secondaryContainer else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon, 
+                        contentDescription = label,
+                        tint = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Text(
+                text = label,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .graphicsLayer {
+                        alpha = expansionProgress
+                        translationX = (1f - expansionProgress) * -20f
+                    },
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            )
         }
     }
 }
@@ -363,7 +447,7 @@ fun EditingSidebarNavItem(
 }
 
 @Composable
-fun SidebarPlaylistEntry(playlist: PlaylistItem, colorScheme: ColorScheme) {
+fun SidebarPlaylistEntry(playlist: PlaylistItem, colorScheme: ColorScheme, onClick: () -> Unit = {}) {
     val isLikedMusic = playlist.title.contains("Liked", ignoreCase = true)
     
     Box(
@@ -372,7 +456,11 @@ fun SidebarPlaylistEntry(playlist: PlaylistItem, colorScheme: ColorScheme) {
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (isLikedMusic) colorScheme.surfaceVariant else Color.Transparent)
-            .clickable { AppState.fetchPlaylistData(playlist.id) }
+            .clickable { 
+                AppState.isExpanded = false // Collapse player on playlist click
+                AppState.fetchPlaylistData(playlist.id) 
+                onClick()
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -415,64 +503,6 @@ fun SidebarPlaylistEntry(playlist: PlaylistItem, colorScheme: ColorScheme) {
 }
 
 @Composable
-fun SidebarNavItem(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector,
-    label: String,
-    isExpanded: Boolean,
-    colorScheme: ColorScheme
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) colorScheme.secondaryContainer else Color.Transparent),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon, 
-                    contentDescription = label,
-                    tint = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
-                )
-            }
-            
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally()
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.padding(start = 12.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun HistoryScreen(colorScheme: ColorScheme) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -505,6 +535,18 @@ fun TogetherScreen(colorScheme: ColorScheme) {
     }
 }
 
+private fun saveWindowState(state: WindowState) {
+    AppState.prefs.put("WINDOW_PLACEMENT", state.placement.name)
+    val position = state.position
+    if (position is WindowPosition.Absolute) {
+        AppState.prefs.putInt("WINDOW_X", position.x.value.toInt())
+        AppState.prefs.putInt("WINDOW_Y", position.y.value.toInt())
+    }
+    AppState.prefs.putInt("WINDOW_WIDTH", state.size.width.value.toInt())
+    AppState.prefs.putInt("WINDOW_HEIGHT", state.size.height.value.toInt())
+    AppState.prefs.flush()
+}
+
 fun main() {
     Platform.startup {}
     
@@ -513,13 +555,30 @@ fun main() {
         secret = BuildConfig.LASTFM_SECRET
     )
     
-    // Load saved session
     LastFM.sessionKey = AppState.prefs.get("LASTFM_SESSION", null)
-    
     AppState.loadSession()
     
     application {
-        // Load window state
+        val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
+        val screens = ge.screenDevices
+        
+        val savedX = AppState.prefs.getInt("WINDOW_X", 100)
+        val savedY = AppState.prefs.getInt("WINDOW_Y", 100)
+        val savedWidth = AppState.prefs.getInt("WINDOW_WIDTH", 1280)
+        val savedHeight = AppState.prefs.getInt("WINDOW_HEIGHT", 800)
+        
+        var targetScreenBounds: Rectangle? = null
+        for (screen in screens) {
+            val bounds = screen.defaultConfiguration.bounds
+            if (bounds.contains(savedX, savedY)) {
+                targetScreenBounds = bounds
+                break
+            }
+        }
+        
+        val finalX = targetScreenBounds?.let { savedX } ?: 100
+        val finalY = targetScreenBounds?.let { savedY } ?: 100
+
         val windowPlacement = try {
             WindowPlacement.valueOf(AppState.prefs.get("WINDOW_PLACEMENT", WindowPlacement.Maximized.name))
         } catch (_: Exception) {
@@ -528,17 +587,10 @@ fun main() {
         
         val windowState = rememberWindowState(
             placement = windowPlacement,
-            position = WindowPosition(
-                AppState.prefs.getInt("WINDOW_X", 100).dp,
-                AppState.prefs.getInt("WINDOW_Y", 100).dp
-            ),
-            size = DpSize(
-                AppState.prefs.getInt("WINDOW_WIDTH", 1280).dp,
-                AppState.prefs.getInt("WINDOW_HEIGHT", 800).dp
-            )
+            position = WindowPosition(finalX.dp, finalY.dp),
+            size = DpSize(savedWidth.dp, savedHeight.dp)
         )
 
-        // Static icon: Nice gradient flowy background (static) + white logo
         val logoPainter = painterResource("logo.svg")
         val animatedPrimary by animateColorAsState(targetValue = AppState.seedColor, animationSpec = tween(1000))
         
@@ -579,16 +631,8 @@ fun main() {
 
         Window(
             onCloseRequest = {
-                AppState.prefs.put("WINDOW_PLACEMENT", windowState.placement.name)
-                AppState.prefs.putInt("WINDOW_X", windowState.position.let { if (it is WindowPosition.Absolute) it.x.value.toInt() else 100 })
-                AppState.prefs.putInt("WINDOW_Y", windowState.position.let { if (it is WindowPosition.Absolute) it.y.value.toInt() else 100 })
-                AppState.prefs.putInt("WINDOW_WIDTH", windowState.size.width.value.toInt())
-                AppState.prefs.putInt("WINDOW_HEIGHT", windowState.size.height.value.toInt())
-                AppState.prefs.flush()
-                
-                // Properly release player resources
+                saveWindowState(windowState)
                 AppState.player.release()
-                
                 exitApplication()
             },
             title = "Metrolist",
@@ -597,15 +641,14 @@ fun main() {
             transparent = true,
             icon = dynamicIcon
         ) {
-            // Fix maximized issues
             LaunchedEffect(Unit) {
                 try {
-                    val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
-                    val gd = ge.defaultScreenDevice
+                    val geLocal = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    val gd = geLocal.defaultScreenDevice
                     val gc = gd.defaultConfiguration
                     val insets = java.awt.Toolkit.getDefaultToolkit().getScreenInsets(gc)
                     val bounds = gc.bounds
-                    val maxBounds = java.awt.Rectangle(
+                    val maxBounds = Rectangle(
                         bounds.x + insets.left,
                         bounds.y + insets.top,
                         bounds.width - (insets.left + insets.right),
@@ -628,16 +671,8 @@ fun main() {
             }
             App(
                 onClose = {
-                    AppState.prefs.put("WINDOW_PLACEMENT", windowState.placement.name)
-                    AppState.prefs.putInt("WINDOW_X", windowState.position.let { if (it is WindowPosition.Absolute) it.x.value.toInt() else 100 })
-                    AppState.prefs.putInt("WINDOW_Y", windowState.position.let { if (it is WindowPosition.Absolute) it.y.value.toInt() else 100 })
-                    AppState.prefs.putInt("WINDOW_WIDTH", windowState.size.width.value.toInt())
-                    AppState.prefs.putInt("WINDOW_HEIGHT", windowState.size.height.value.toInt())
-                    AppState.prefs.flush()
-                    
-                    // Properly release player resources
+                    saveWindowState(windowState)
                     AppState.player.release()
-                    
                     exitApplication()
                 },
                 onMinimize = { windowState.isMinimized = true },

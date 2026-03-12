@@ -26,17 +26,23 @@ import java.util.prefs.Preferences
 
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
 
-object AppState {
-    val prefs: Preferences = Preferences.userNodeForPackage(AppState::class.java)
-    private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + kotlinx.coroutines.Job())
-    
+
+object GlobalInnerTube {
     val client = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
-    
-    private val innerTube = InnerTube(client)
-    var repository = YouTubeRepository(innerTube)
-    
+    val instance: InnerTube = InnerTube(client)
+}
+
+object GlobalYouTubeRepository {
+    val instance: YouTubeRepository = YouTubeRepository(GlobalInnerTube.instance)
+}
+
+object AppState {
+    val client get() = GlobalInnerTube.client
+    val prefs: Preferences = Preferences.userNodeForPackage(AppState::class.java)
+    private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + kotlinx.coroutines.Job())
+
     val player = MusicPlayer()
     private val scrobbleManager = ScrobbleManager(scope)
     
@@ -45,7 +51,9 @@ object AppState {
     var progress by mutableStateOf(0f)
     var volume by mutableStateOf(prefs.getFloat("PLAYER_VOLUME", 0.7f))
     
-    var isExpanded by mutableStateOf(false)
+    // Remember expanded state
+    var isExpanded by mutableStateOf(prefs.getBoolean("PLAYER_EXPANDED", false))
+    
     var seedColor by mutableStateOf(DefaultThemeColor)
     var isWindowFocused by mutableStateOf(true)
     var isMaximized by mutableStateOf(false)
@@ -60,6 +68,10 @@ object AppState {
     var selectedPlaylistId by mutableStateOf<String?>(null)
     var playlistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
     var isPlaylistLoading by mutableStateOf(false)
+
+    var selectedAlbumId by mutableStateOf<String?>(null)
+    var albumPageData by mutableStateOf<AlbumPage?>(null)
+    var isAlbumLoading by mutableStateOf(false)
 
     var isHomeLoading by mutableStateOf(false)
     
@@ -257,9 +269,14 @@ object AppState {
 
     fun playTrack(track: SongItem) {
         scope.launch {
-            val url = repository.getStreamUrl(track.id)
+            println("[DEBUG] playTrack called for: ${track.title} (${track.id})")
+            val url = GlobalYouTubeRepository.instance.getStreamUrl(track.id)
+            println("[DEBUG] getStreamUrl returned: $url")
             if (url != null) {
+                println("[DEBUG] Calling player.play with url: $url")
                 player.play(track, url)
+            } else {
+                println("[DEBUG] No stream URL found for track: ${track.title} (${track.id})")
             }
         }
     }
@@ -322,11 +339,11 @@ object AppState {
         prefs.put("COOKIES", cookie)
         prefs.put("VISITOR_DATA", visitorData)
         prefs.put("DATASYNC_ID", dataSyncId)
-        
-        repository.setCookie(cookie)
-        innerTube.visitorData = visitorData
-        innerTube.dataSyncId = dataSyncId
-        
+
+        GlobalYouTubeRepository.instance.setCookie(cookie)
+        GlobalInnerTube.instance.visitorData = visitorData
+        GlobalInnerTube.instance.dataSyncId = dataSyncId
+
         isSignedIn = true
         showSignIn = false
         fetchAccountInfo()
@@ -339,18 +356,18 @@ object AppState {
         val cookies = prefs.get("COOKIES", null)
         val visitorData = prefs.get("VISITOR_DATA", null)
         val dataSyncId = prefs.get("DATASYNC_ID", null)
-        
-        innerTube.visitorData = visitorData
-        innerTube.dataSyncId = dataSyncId
+
+        GlobalInnerTube.instance.visitorData = visitorData
+        GlobalInnerTube.instance.dataSyncId = dataSyncId
 
         if (cookies != null) {
-            repository.setCookie(cookies)
+            GlobalYouTubeRepository.instance.setCookie(cookies)
             isSignedIn = true
             profilePicUrl = prefs.get("PFP_URL", null)
             fetchAccountInfo()
             fetchLibraryData()
         }
-        
+
         // Always try to fetch home data (will use visitorData if not signed in)
         fetchHomeData()
     }
@@ -358,7 +375,7 @@ object AppState {
     private fun fetchAccountInfo() {
         scope.launch {
             try {
-                val info = repository.getAccountInfo()
+                val info = GlobalYouTubeRepository.instance.getAccountInfo()
                 if (info != null) {
                     profilePicUrl = info.thumbnailUrl
                     prefs.put("PFP_URL", info.thumbnailUrl ?: "")
@@ -373,26 +390,26 @@ object AppState {
         isHomeLoading = true
         scope.launch {
             try {
-                if (innerTube.visitorData == null) {
-                    val data = innerTube.fetchFreshVisitorData()
+                if (GlobalInnerTube.instance.visitorData == null) {
+                    val data = GlobalInnerTube.instance.fetchFreshVisitorData()
                     if (data != null) {
                         prefs.put("VISITOR_DATA", data)
                         prefs.flush()
                     }
                 }
-                var sections = repository.getHomeData()
-                
+                var sections = GlobalYouTubeRepository.instance.getHomeData()
+
                 // If empty, try clearing visitor data and fetching again (likely expired visitor data)
                 if (sections.isEmpty()) {
-                    innerTube.visitorData = null
-                    val data = innerTube.fetchFreshVisitorData()
+                    GlobalInnerTube.instance.visitorData = null
+                    val data = GlobalInnerTube.instance.fetchFreshVisitorData()
                     if (data != null) {
                         prefs.put("VISITOR_DATA", data)
                         prefs.flush()
                     }
-                    sections = repository.getHomeData()
+                    sections = GlobalYouTubeRepository.instance.getHomeData()
                 }
-                
+
                 homeSections = sections
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -405,19 +422,21 @@ object AppState {
     fun fetchLibraryData() {
         scope.launch {
             try {
-                val page = repository.getLibrary()
+                val page = GlobalYouTubeRepository.instance.getLibrary()
                 librarySections = mapOf("Library" to page.items)
             } catch (_: Exception) {}
         }
     }
 
     fun fetchArtistData(id: String) {
+        isExpanded = false
         selectedArtistId = id
         selectedPlaylistId = null
+        selectedAlbumId = null
         isArtistLoading = true
         scope.launch {
             try {
-                artistData = repository.getArtist(id)
+                artistData = GlobalYouTubeRepository.instance.getArtist(id)
             } catch (_: Exception) {}
             finally {
                 isArtistLoading = false
@@ -426,15 +445,33 @@ object AppState {
     }
 
     fun fetchPlaylistData(id: String) {
+        isExpanded = false
         selectedPlaylistId = id
         selectedArtistId = null
+        selectedAlbumId = null
         isPlaylistLoading = true
         scope.launch {
             try {
-                playlistData = repository.getPlaylist(id)
+                playlistData = GlobalYouTubeRepository.instance.getPlaylist(id)
             } catch (_: Exception) {}
             finally {
                 isPlaylistLoading = false
+            }
+        }
+    }
+
+    fun fetchAlbumData(id: String) {
+        isExpanded = false
+        selectedAlbumId = id
+        selectedArtistId = null
+        selectedPlaylistId = null
+        isAlbumLoading = true
+        scope.launch {
+            try {
+                albumPageData = GlobalYouTubeRepository.instance.getAlbum(id)
+            } catch (_: Exception) {}
+            finally {
+                isAlbumLoading = false
             }
         }
     }
@@ -444,11 +481,11 @@ object AppState {
         isLyricsLoading = true
         scope.launch {
             currentLyrics = try {
-                repository.getLyrics(
+                GlobalYouTubeRepository.instance.getLyrics(
                     song.title,
                     song.artists.joinToString { it.name },
                     song.duration,
-                    song.album?.name
+                    song.album?.name ?: song.title
                 )
             } catch (_: Exception) {
                 "Lyrics not found"
@@ -464,9 +501,9 @@ object AppState {
         prefs.remove("DATASYNC_ID")
         prefs.remove("PFP_URL")
         isSignedIn = false
-        repository.setCookie(null)
-        innerTube.visitorData = null
-        innerTube.dataSyncId = null
+        GlobalYouTubeRepository.instance.setCookie(null)
+        GlobalInnerTube.instance.visitorData = null
+        GlobalInnerTube.instance.dataSyncId = null
         profilePicUrl = null
         homeSections = emptyMap()
         librarySections = emptyMap()

@@ -22,7 +22,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val info = response.actions.firstOrNull()?.openPopupAction?.popup?.multiPageMenuRenderer?.header?.activeAccountHeaderRenderer?.toAccountInfo()
             if (info != null) lastAccountInfo = info
             info
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -31,7 +31,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         return try {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = "FEmusic_home", setLogin = true).body<BrowseResponse>()
             parseBrowseResponse(response).sections
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyMap()
         }
     }
@@ -41,7 +41,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = "FEmusic_library_landing", setLogin = true).body<BrowseResponse>()
             val parsed = parseBrowseResponse(response)
             com.metrolist.shared.api.innertube.models.YouTubeDataPage(parsed.sections.values.flatten(), parsed.continuation)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             com.metrolist.shared.api.innertube.models.YouTubeDataPage(emptyList())
         }
     }
@@ -132,7 +132,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val sections = parsed.sections.toMutableMap()
             sections["header"] = listOf(playlistInfo)
             sections
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyMap()
         }
     }
@@ -196,7 +196,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 } ?: emptyList()
 
             AlbumPage(albumItem, songs, otherVersions)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -241,7 +241,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     continuationToken = null
                 }
             }
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
         return songs
     }
 
@@ -250,7 +250,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, continuation = token, setLogin = true).body<BrowseResponse>()
             val parsed = parseBrowseResponse(response)
             com.metrolist.shared.api.innertube.models.YouTubeDataPage(parsed.sections.values.flatten(), parsed.continuation)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             com.metrolist.shared.api.innertube.models.YouTubeDataPage(emptyList())
         }
     }
@@ -259,7 +259,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         return try {
             val response = innerTube.search(YouTubeClient.WEB_REMIX, query = query).body<JsonObject>()
             parseSearchResponse(response)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -273,7 +273,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             return try {
                 val resp = innerTube.player(client, videoId).body<PlayerResponse>()
                 if (resp.playabilityStatus.status == "OK" && resp.streamingData != null) resp else null
-            } catch (e: Exception) { null }
+            } catch (_: Exception) { null }
         }
 
         val response = tryPlayer(YouTubeClient.TVHTML5_EMBEDDED)
@@ -417,21 +417,31 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 val artists = mutableListOf<ArtistTiny>()
                 var album: AlbumTiny? = null
                 var duration: Long? = null
+                val potentialAlbums = mutableListOf<AlbumTiny>()
                 val metadataStrings = mutableListOf<String>()
 
                 runs?.forEach { run ->
                     val runObj = run.jsonObject
-                    val text = runObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val text = (runObj["text"]?.jsonPrimitive?.contentOrNull ?: "").trim()
                     val nav = runObj["navigationEndpoint"]?.jsonObject
                     val runBrowseId = nav?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
                     
-                    if (text == " • " || text == " & " || text == ", " || text == "Song" || text == "Video" || text.isBlank()) return@forEach
+                    if (text == "•" || text == "&" || text == "," || text.isBlank()) return@forEach
+                    
+                    // Filter out non-artist/album strings
+                    val lower = text.lowercase()
+                    if (lower == "song" || lower == "video" || lower.contains("views") || lower.contains("likes") || lower.contains("play count") || lower.contains("subscribers")) {
+                        return@forEach
+                    }
                     
                     if (runBrowseId != null) {
-                        if (runBrowseId.startsWith("MPREb") || runBrowseId.contains("release_detail")) {
+                        if (runBrowseId.startsWith("MPREb") || runBrowseId.contains("release_detail") || runBrowseId.startsWith("FEmusic_release_detail")) {
                             album = AlbumTiny(runBrowseId, text)
-                        } else {
+                        } else if (runBrowseId.startsWith("UC")) {
                             artists.add(ArtistTiny(runBrowseId, text))
+                        } else {
+                            // Catch-all for linked items that aren't artists
+                            potentialAlbums.add(AlbumTiny(runBrowseId, text))
                         }
                     } else {
                         val d = parseDuration(text)
@@ -443,20 +453,24 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     }
                 }
                 
+                // If we didn't find an explicit album browseId, use the first potential album
+                if (album == null && potentialAlbums.isNotEmpty()) {
+                    album = potentialAlbums[0]
+                }
+
                 // Heuristic for unlinked metadata
-                if (album == null) {
+                if (artists.isEmpty() || album == null) {
                     val filtered = metadataStrings.filter { str ->
-                        !str.matches(Regex("\\d{4}")) && 
-                        !str.contains(Regex("\\d+(\\.\\d+)?[MK]? views", RegexOption.IGNORE_CASE)) && 
-                        !str.contains(Regex("\\d+ likes", RegexOption.IGNORE_CASE))
+                        !str.matches(Regex("\\d{4}")) && // Year
+                        !str.contains(Regex("\\d+.*", RegexOption.IGNORE_CASE)) // Likely views/likes
                     }
                     
                     if (artists.isEmpty() && filtered.isNotEmpty()) {
                         artists.add(ArtistTiny(null, filtered[0]))
-                        if (filtered.size >= 2) {
+                        if (album == null && filtered.size >= 2) {
                             album = AlbumTiny(null, filtered[1])
                         }
-                    } else if (filtered.isNotEmpty()) {
+                    } else if (album == null && filtered.isNotEmpty()) {
                         album = AlbumTiny(null, filtered[0])
                     }
                 }
@@ -469,7 +483,10 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 // musicResponsiveListItemRenderer
                 val titleColumn = flexColumns.getOrNull(0)?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
                 val title = titleColumn?.get("text")?.jsonObject?.get("runs")?.jsonArray?.mapNotNull { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull }
-                    ?.firstOrNull { it != "Song" && it != "Video" && it != " • " } ?: return null
+                    ?.firstOrNull { 
+                        val l = it.lowercase()
+                        l != "song" && l != "video" && it != " • " && it != "•" 
+                    } ?: return null
                 
                 val navigationEndpoint = item["navigationEndpoint"]?.jsonObject ?: item["onTap"]?.jsonObject
                 val browseId = navigationEndpoint?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
@@ -540,7 +557,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             }
 
             null
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

@@ -186,15 +186,8 @@ val MetrolistPauseIcon: ImageVector
         verticalLineToRelative(-400f)
         horizontalLineToRelative(-80f)
         verticalLineToRelative(400f)
-        close()
-        moveTo(280f, 280f)
-        verticalLineToRelative(400f)
-        verticalLineToRelative(-400f)
-        close()
         moveTo(600f, 280f)
         verticalLineToRelative(400f)
-        verticalLineToRelative(-400f)
-        close()
     }.build()
 
 val MetrolistVolumeUpIcon: ImageVector

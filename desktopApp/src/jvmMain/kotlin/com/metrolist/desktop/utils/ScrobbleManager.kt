@@ -99,7 +99,7 @@ class ScrobbleManager(
                 artist = song.artists.joinToString { it.name },
                 track = song.title,
                 timestamp = songStartedAt,
-                album = song.album?.name,
+                album = song.album?.name ?: song.title,
             )
         }
     }
@@ -112,7 +112,7 @@ class ScrobbleManager(
                 httpClient = AppState.client,
                 artist = song.artists.joinToString { it.name },
                 track = song.title,
-                album = song.album?.name
+                album = song.album?.name ?: song.title
             )
         }
     }

@@ -33,3 +33,4 @@ secrets.properties
 Thumbs.db
 stuff/
 .kotlin/errors/
+external/

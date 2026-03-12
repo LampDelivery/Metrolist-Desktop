@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,6 +37,7 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
         when (item) {
             is ArtistItem -> AppState.fetchArtistData(item.id)
             is PlaylistItem -> AppState.fetchPlaylistData(item.id)
+            is AlbumItem -> AppState.fetchAlbumData(item.id)
             else -> onClick()
         }
     }
@@ -58,20 +61,67 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
             textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
             modifier = Modifier.fillMaxWidth()
         )
-        val subtitle = when (item) {
-            is SongItem -> item.artists.joinToString { it.name }
-            is AlbumItem -> item.artists.joinToString { it.name }
-            is ArtistItem -> "Artist"
-            is PlaylistItem -> item.author ?: "Playlist"
+        
+        val subtitle = buildAnnotatedString {
+            when (item) {
+                is SongItem -> {
+                    item.artists.forEachIndexed { index, artist ->
+                        artist.id?.let { id ->
+                            pushStringAnnotation("ARTIST", id)
+                        }
+                        withStyle(SpanStyle(color = if (artist.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                            append(artist.name)
+                        }
+                        if (artist.id != null) pop()
+                        
+                        if (index < item.artists.lastIndex || item.album != null) {
+                            append(if (index < item.artists.lastIndex) ", " else " • ")
+                        }
+                    }
+                    item.album?.let { album ->
+                        album.id?.let { id ->
+                            pushStringAnnotation("ALBUM", id)
+                        }
+                        withStyle(SpanStyle(color = if (album.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                            append(album.name)
+                        }
+                        if (album.id != null) pop()
+                    }
+                }
+                is AlbumItem -> {
+                    item.artists.forEachIndexed { index, artist ->
+                        artist.id?.let { id ->
+                            pushStringAnnotation("ARTIST", id)
+                        }
+                        withStyle(SpanStyle(color = if (artist.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                            append(artist.name)
+                        }
+                        if (artist.id != null) pop()
+                        if (index < item.artists.lastIndex) append(", ")
+                    }
+                }
+                is ArtistItem -> append("Artist")
+                is PlaylistItem -> append(item.author ?: "Playlist")
+            }
         }
-        Text(
-            subtitle, 
-            style = MaterialTheme.typography.bodyMedium, 
-            color = colorScheme.onSurfaceVariant, 
+
+        ClickableText(
+            text = subtitle, 
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = colorScheme.onSurfaceVariant,
+                textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start
+            ),
             maxLines = 1, 
             overflow = TextOverflow.Ellipsis,
-            textAlign = if (item is ArtistItem) TextAlign.Center else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { offset ->
+                subtitle.getStringAnnotations("ARTIST", offset, offset).firstOrNull()?.let { annotation ->
+                    AppState.fetchArtistData(annotation.item)
+                }
+                subtitle.getStringAnnotations("ALBUM", offset, offset).firstOrNull()?.let { annotation ->
+                    AppState.fetchAlbumData(annotation.item)
+                }
+            }
         )
     }
 }
@@ -84,6 +134,7 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
         when (item) {
             is ArtistItem -> AppState.fetchArtistData(item.id)
             is PlaylistItem -> AppState.fetchPlaylistData(item.id)
+            is AlbumItem -> AppState.fetchAlbumData(item.id)
             else -> onClick()
         }
     }
@@ -96,13 +147,64 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val subtitle = when (item) {
-                is SongItem -> item.artists.joinToString { it.name }
-                is AlbumItem -> item.artists.joinToString { it.name }
-                is ArtistItem -> "Artist"
-                is PlaylistItem -> item.author ?: "Playlist"
+            
+            val subtitle = buildAnnotatedString {
+                when (item) {
+                    is SongItem -> {
+                        item.artists.forEachIndexed { index, artist ->
+                            artist.id?.let { id ->
+                                pushStringAnnotation("ARTIST", id)
+                            }
+                            withStyle(SpanStyle(color = if (artist.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                                append(artist.name)
+                            }
+                            if (artist.id != null) pop()
+
+                            if (index < item.artists.lastIndex || item.album != null) {
+                                append(if (index < item.artists.lastIndex) ", " else " • ")
+                            }
+                        }
+                        item.album?.let { album ->
+                            album.id?.let { id ->
+                                pushStringAnnotation("ALBUM", id)
+                            }
+                            withStyle(SpanStyle(color = if (album.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                                append(album.name)
+                            }
+                            if (album.id != null) pop()
+                        }
+                    }
+                    is AlbumItem -> {
+                        item.artists.forEachIndexed { index, artist ->
+                            artist.id?.let { id ->
+                                pushStringAnnotation("ARTIST", id)
+                            }
+                            withStyle(SpanStyle(color = if (artist.id != null) colorScheme.primary else colorScheme.onSurfaceVariant)) {
+                                append(artist.name)
+                            }
+                            if (artist.id != null) pop()
+                            if (index < item.artists.lastIndex) append(", ")
+                        }
+                    }
+                    is ArtistItem -> append("Artist")
+                    is PlaylistItem -> append(item.author ?: "Playlist")
+                }
             }
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+            ClickableText(
+                text = subtitle, 
+                style = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurfaceVariant), 
+                maxLines = 1, 
+                overflow = TextOverflow.Ellipsis,
+                onClick = { offset ->
+                    subtitle.getStringAnnotations("ARTIST", offset, offset).firstOrNull()?.let { annotation ->
+                        AppState.fetchArtistData(annotation.item)
+                    }
+                    subtitle.getStringAnnotations("ALBUM", offset, offset).firstOrNull()?.let { annotation ->
+                        AppState.fetchAlbumData(annotation.item)
+                    }
+                }
+            )
         }
         IconButton(onClick = {}) { Icon(Icons.Default.MoreVert, null, tint = colorScheme.onSurfaceVariant) }
     }
@@ -116,6 +218,7 @@ fun SpeedDialGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Uni
         when (item) {
             is ArtistItem -> AppState.fetchArtistData(item.id)
             is PlaylistItem -> AppState.fetchPlaylistData(item.id)
+            is AlbumItem -> AppState.fetchAlbumData(item.id)
             else -> onClick()
         }
     }

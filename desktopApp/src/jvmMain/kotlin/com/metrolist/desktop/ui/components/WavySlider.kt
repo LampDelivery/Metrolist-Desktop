@@ -1,24 +1,29 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
 package com.metrolist.desktop.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
+import kotlin.math.sin
 
 @Composable
 fun WavySlider(
@@ -47,7 +52,6 @@ fun WavySlider(
     
     val animatedAmplitude by animateFloatAsState(
         targetValue = if (isPlaying && !isDragging) 1f else 0f,
-        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
         label = "amplitude"
     )
     
@@ -108,7 +112,7 @@ fun WavySlider(
             val waveLength = 40.dp.toPx()
             val amplitude = 6.dp.toPx() * animatedAmplitude
             
-            // when inactive
+            // Inactive track (straight line)
             drawLine(
                 color = inactiveColor,
                 start = Offset(progressPx, centerY),
@@ -117,14 +121,14 @@ fun WavySlider(
                 cap = StrokeCap.Round
             )
             
-            // when active
-            val path = androidx.compose.ui.graphics.Path()
+            // Active track (wavy path)
+            val path = Path()
             path.moveTo(0f, centerY)
             
             val segments = (progressPx / 2f).toInt().coerceAtLeast(1)
             for (i in 0..segments) {
                 val x = (i.toFloat() / segments) * progressPx
-                val y = centerY + amplitude * kotlin.math.sin(x * 2 * kotlin.math.PI.toFloat() / waveLength)
+                val y = centerY + amplitude * sin(x * 2 * PI.toFloat() / waveLength)
                 path.lineTo(x, y)
             }
             
@@ -134,11 +138,12 @@ fun WavySlider(
                 style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
             )
             
-            // Thumb (might rework later)
+            // Thumb
+            val thumbY = centerY + amplitude * sin(progressPx * 2 * PI.toFloat() / waveLength)
             drawCircle(
                 color = thumbColor,
                 radius = thumbRadiusPx,
-                center = Offset(progressPx, centerY + amplitude * kotlin.math.sin(progressPx * 2 * kotlin.math.PI.toFloat() / waveLength))
+                center = Offset(progressPx, thumbY)
             )
         }
     }

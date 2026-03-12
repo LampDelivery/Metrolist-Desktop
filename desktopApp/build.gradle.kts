@@ -78,8 +78,21 @@ val generateConfig by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/source/config/main/kotlin").get().asFile
     outputs.dir(outputDir)
     doLast {
-        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
-        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
+        // 1. Try local.properties
+        // 2. Try System Environment (for GitHub Actions)
+        // 3. Default to empty
+        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") 
+            ?: System.getenv("LASTFM_API_KEY") 
+            ?: ""
+        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") 
+            ?: System.getenv("LASTFM_SECRET") 
+            ?: ""
+        
+        if (lastFmKey.isEmpty()) {
+            logger.warn("Warning: LASTFM_API_KEY not found. Last.fm features will be disabled.")
+        } else {
+            println("Configured Last.fm with Key: ${lastFmKey.take(4)}...")
+        }
         
         val configFile = outputDir.resolve("com/metrolist/desktop/BuildConfig.kt")
         configFile.parentFile.mkdirs()
@@ -87,8 +100,8 @@ val generateConfig by tasks.registering {
             package com.metrolist.desktop
 
             object BuildConfig {
-                const val LASTFM_API_KEY = "$lastFmKey"
-                const val LASTFM_SECRET = "$lastFmSecret"
+                const val LASTFM_API_KEY = "${lastFmKey.trim()}"
+                const val LASTFM_SECRET = "${lastFmSecret.trim()}"
             }
         """.trimIndent())
     }

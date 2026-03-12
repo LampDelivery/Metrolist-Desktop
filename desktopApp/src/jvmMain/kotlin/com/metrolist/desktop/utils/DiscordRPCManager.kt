@@ -71,13 +71,15 @@ object DiscordRPCManager {
         lastDurationSeconds = durationSeconds
 
         try {
-            val albumName = song.album?.name ?: "Metrolist"
-            
+            val albumName = song.album?.name
+            val artistName = song.artists.joinToString { it.name }
+            val subtitle = if (albumName.isNullOrBlank()) artistName else "$artistName • $albumName"
+
             val builder = DiscordRichPresence.builder()
-                .details(if (AppState.discordRpcUseDetails) song.title else song.artists.joinToString { it.name })
-                .state(if (AppState.discordRpcUseDetails) song.artists.joinToString { it.name } else song.title)
+                .details(song.title)
+                .state(subtitle)
                 .largeImageKey(song.thumbnail ?: "icon")
-                .largeImageText(albumName)
+                .largeImageText(albumName ?: song.title)
                 .activityType(ActivityType.LISTENING)
 
             if (isPlaying) {
