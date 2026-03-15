@@ -659,6 +659,51 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         }
     }
 
+    /** Fetches album metadata for a single videoId via the /next endpoint.
+     *  Songs from homepage carousels and artist pages often have album = null;
+     *  this call fills it in without requiring a full album page browse. */
+    suspend fun getSongAlbum(videoId: String): AlbumTiny? {
+        return try {
+            val response = innerTube.next(
+                YouTubeClient.WEB_REMIX,
+                videoId = videoId
+            ).body<JsonObject>()
+
+            val contents = response["contents"]?.jsonObject
+                ?.get("singleColumnMusicWatchNextResultsRenderer")?.jsonObject
+                ?.get("tabbedRenderer")?.jsonObject
+                ?.get("watchNextTabbedResultsRenderer")?.jsonObject
+                ?.get("tabs")?.jsonArray
+                ?.getOrNull(0)?.jsonObject
+                ?.get("tabRenderer")?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("musicQueueRenderer")?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("playlistPanelRenderer")?.jsonObject
+                ?.get("contents")?.jsonArray
+
+            val renderer = contents?.firstOrNull()?.jsonObject
+                ?.get("playlistPanelVideoRenderer")?.jsonObject ?: return null
+
+            // Verify the response is actually for this song
+            if (renderer["videoId"]?.jsonPrimitive?.contentOrNull != videoId) return null
+
+            // longBylineText.runs contains artist(s) and album, each with a browseId
+            val runs = renderer["longBylineText"]?.jsonObject?.get("runs")?.jsonArray
+            runs?.forEach { run ->
+                val text = run.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+                val browseId = run.jsonObject["navigationEndpoint"]?.jsonObject
+                    ?.get("browseEndpoint")?.jsonObject
+                    ?.get("browseId")?.jsonPrimitive?.contentOrNull
+                if (browseId != null &&
+                    (browseId.startsWith("MPREb") || browseId.contains("release_detail"))) {
+                    return AlbumTiny(browseId, text)
+                }
+            }
+            null
+        } catch (_: Exception) { null }
+    }
+
     suspend fun subscribeChannel(channelId: String, subscribe: Boolean): Boolean {
         return try {
             innerTube.subscribeChannel(YouTubeClient.WEB_REMIX, channelId, subscribe)

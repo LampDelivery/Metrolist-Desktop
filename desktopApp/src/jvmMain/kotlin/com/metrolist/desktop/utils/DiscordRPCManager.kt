@@ -114,7 +114,7 @@ object DiscordRPCManager {
                 .details(song.title)
                 .state(artistName)
                 .largeImageKey(song.thumbnail ?: "icon")
-                .largeImageText(albumName ?: artistName)
+                .largeImageText(albumName ?: song.title)
                 .activityType(actType)
 
             // Show artist portrait as small image; no fallback to album art while playing

@@ -221,6 +221,17 @@ object AppState {
                         }
                     }
                     fetchLyrics(song)
+                    // If the song has no album (common for homepage/artist page carousels),
+                    // fetch it in the background via /next and patch currentTrack.
+                    if (song.album == null) {
+                        scope.launch {
+                            val album = GlobalYouTubeRepository.instance.getSongAlbum(song.id)
+                            if (album != null && currentTrack?.id == song.id) {
+                                currentTrack = currentTrack?.copy(album = album)
+                                updateDiscordRpc()
+                            }
+                        }
+                    }
                     // Record play in persistent history
                     if (!pauseListenHistory) {
                         withContext(Dispatchers.IO) { HistoryRepository.recordPlay(song) }
