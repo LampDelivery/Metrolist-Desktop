@@ -95,7 +95,7 @@ object YouTubeMusicParser {
 
             when {
                 videoId != null -> {
-                    val artistColumn = flexColumns?.getOrNull(1)?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
+                    val artistColumn = flexColumns.getOrNull(1)?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
                     val artistRuns = artistColumn?.get("text")?.jsonObject?.get("runs")?.jsonArray
                     val artists = mutableListOf<ArtistTiny>()
                     artistRuns?.forEach { run ->

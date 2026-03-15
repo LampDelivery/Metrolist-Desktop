@@ -1,5 +1,6 @@
 import java.util.Properties
 import org.gradle.api.tasks.JavaExec
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 val javafxVersion = "21"
 val platform = org.gradle.internal.os.OperatingSystem.current().let {
@@ -141,13 +142,14 @@ compose.desktop {
     application {
         mainClass = "com.metrolist.desktop.MainKt"
         nativeDistributions {
-            targetFormats(
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb,     // Debian / Ubuntu
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Rpm,     // Fedora / RHEL / openSUSE
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.AppImage // Arch / generic (portable)
-            )
+            // targetFormats must only list formats valid for the current OS —
+            // Compose Desktop validates this at configuration time, not just at task execution.
+            val formats = when (platform) {
+                "win"  -> arrayOf(TargetFormat.Msi)
+                "mac"  -> arrayOf(TargetFormat.Dmg)
+                else   -> arrayOf(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
+            }
+            targetFormats(*formats)
             packageName = "Metrolist"
             packageVersion = "1.0.0"
             description = "Metrolist Music Player"

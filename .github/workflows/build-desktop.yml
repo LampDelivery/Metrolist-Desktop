@@ -76,6 +76,14 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x ./gradlew
 
+      - name: Generate installer icons
+        shell: bash
+        run: |
+          python3 -m pip install --quiet Pillow
+          # cairosvg gives higher-quality SVG rendering; optional — script falls back to logo.png
+          python3 -m pip install --quiet cairosvg 2>/dev/null || true
+          python3 scripts/gen_icons.py
+
       - name: Build and package desktop app
         shell: bash
         env:
@@ -105,12 +113,23 @@ jobs:
           name: Metrolist-macOS
           path: desktopApp/build/compose/binaries/main/dmg/*.dmg
 
-      - name: Upload artifacts (Linux)
+      - name: Upload artifacts (Linux .deb — Debian / Ubuntu / Mint)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: Metrolist-Linux
-          path: |
-            desktopApp/build/compose/binaries/main/deb/*.deb
-            desktopApp/build/compose/binaries/main/rpm/*.rpm
-            desktopApp/build/compose/binaries/main/app-image/*.AppImage
+          name: Metrolist-Linux-deb
+          path: desktopApp/build/compose/binaries/main/deb/*.deb
+
+      - name: Upload artifacts (Linux .rpm — Fedora / RHEL / openSUSE)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metrolist-Linux-rpm
+          path: desktopApp/build/compose/binaries/main/rpm/*.rpm
+
+      - name: Upload artifacts (Linux .AppImage — Arch / NixOS / generic)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metrolist-Linux-AppImage
+          path: desktopApp/build/compose/binaries/main/app-image/*.AppImage

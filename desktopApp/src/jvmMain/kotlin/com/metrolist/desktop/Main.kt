@@ -930,6 +930,7 @@ fun main() {
             onCloseRequest = {
                 saveWindowState(windowState)
                 AppState.player.release()
+                Platform.exit() // shut down the JavaFX thread if it was started (sign-in WebView)
                 exitApplication()
             },
             title = "Metrolist",

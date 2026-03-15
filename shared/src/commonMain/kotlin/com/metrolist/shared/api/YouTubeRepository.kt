@@ -531,7 +531,6 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             }
 
             val items = mutableListOf<YTItem>()
-            var nextContinuation: String? = null
 
             val contents = response["contents"]?.jsonObject
                 ?.get("tabbedSearchResultsRenderer")?.jsonObject
@@ -556,7 +555,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 parseItem(renderer)?.let { items.add(it) }
             }
 
-            nextContinuation = shelf?.get("continuations")?.jsonArray?.getOrNull(0)?.jsonObject
+            val nextContinuation = shelf?.get("continuations")?.jsonArray?.getOrNull(0)?.jsonObject
                 ?.get("nextContinuationData")?.jsonObject?.get("continuation")?.jsonPrimitive?.contentOrNull
 
             SearchResultPage(items, nextContinuation)
@@ -740,7 +739,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
     private fun parseBrowseResponse(response: BrowseResponse): ParsedBrowse {
         val sections = mutableMapOf<String, List<YTItem>>()
-        var continuationToken: String? = null
+        var continuationToken: String?
         
         val contents = response.contents ?: return ParsedBrowse(emptyMap(), null)
         
