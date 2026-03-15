@@ -122,7 +122,7 @@ object AppState {
     var currentSearchQuery by mutableStateOf("")
 
     // Discord RPC Preferences
-    var discordRpcEnabled by mutableStateOf(prefs.getBoolean("DISCORD_RPC_ENABLED", true))
+    var discordRpcEnabled by mutableStateOf(prefs.getBoolean("DISCORD_RPC_ENABLED", false))
     var discordRpcShowIdle by mutableStateOf(prefs.getBoolean("DISCORD_RPC_SHOW_IDLE", true))
     var discordRpcUseDetails by mutableStateOf(prefs.getBoolean("DISCORD_RPC_USE_DETAILS", true))
     var discordRpcShowButtons by mutableStateOf(prefs.getBoolean("DISCORD_RPC_SHOW_BUTTONS", true))

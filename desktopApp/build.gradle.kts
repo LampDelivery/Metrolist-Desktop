@@ -144,13 +144,32 @@ compose.desktop {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb,     // Debian / Ubuntu
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Rpm,     // Fedora / RHEL / openSUSE
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.AppImage // Arch / generic (portable)
             )
             packageName = "Metrolist"
             packageVersion = "1.0.0"
             description = "Metrolist Music Player"
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"
+
+            // Declare only the JDK modules we actually need — jlink strips everything else,
+            // producing a significantly smaller bundled JRE.
+            modules(
+                "java.base",
+                "java.desktop",          // AWT/Swing — required for JFXPanel/SwingPanel
+                "java.logging",          // java.util.logging
+                "java.management",       // ManagementFactory — needed by Discord RPC native lib
+                "java.naming",           // JNDI — used by JDBC driver SPI lookup
+                "java.net.http",         // HttpClient — used by Ktor and other networking
+                "java.prefs",            // Java Preferences API — settings persistence
+                "java.sql",              // JDBC — required by SQLite / HistoryRepository
+                "java.xml",             // XML parsing — used by various libs
+                "jdk.crypto.ec",         // EC cipher suites — required for TLS with YouTube
+                "jdk.unsupported",       // sun.misc.Unsafe and other internal APIs
+                "jdk.unsupported.desktop" // SwingInterOpUtils — fixes JavaFX-Swing crash on Linux
+            )
 
             // JavaFX requires access to internals that are restricted by the module system
             jvmArgs += listOf(
@@ -159,7 +178,7 @@ compose.desktop {
                 "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
                 "--add-opens=java.desktop/sun.swing=ALL-UNNAMED"
             )
-            
+
             appResourcesRootDir.set(syncExternalResources.map { project.layout.projectDirectory.dir(it.destinationDir.absolutePath) })
 
             windows {
@@ -169,6 +188,8 @@ compose.desktop {
             }
             linux {
                 iconFile.set(project.file("src/jvmMain/resources/logo.png"))
+                // JavaFX/GTK requires C numeric locale; set it via system property as a best-effort
+                jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI")
             }
             macOS {
                 bundleID = "com.metrolist.desktop"

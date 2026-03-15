@@ -20,6 +20,10 @@ object DiscordRPCManager {
     private var lastPositionSeconds: Long = 0
     private var lastDurationSeconds: Long = 0
 
+    // Prevent hammering the IPC socket when Discord isn't running
+    private var lastInitAttempt = 0L
+    private const val INIT_RETRY_INTERVAL_MS = 30_000L
+
     private val handler = object : RPCEventHandler() {
         override fun ready(user: User) {
             println("Discord RPC ready: ${user.username}")
@@ -46,6 +50,8 @@ object DiscordRPCManager {
         lastUpdateMillis = 0
         lastPositionSeconds = 0
         lastDurationSeconds = 0
+        lastInitAttempt = 0L
+        try { rpc.shutdown() } catch (_: Exception) {}
         try {
             rpc = DiscordRpc()
         } catch (_: Exception) {}
@@ -53,7 +59,14 @@ object DiscordRPCManager {
     }
 
     fun update(song: SongItem?, isPlaying: Boolean, currentPositionMs: Long, artistIconOverride: String? = null) {
-        if (!initialized) init()
+        if (!initialized) {
+            val now = System.currentTimeMillis()
+            if (now - lastInitAttempt >= INIT_RETRY_INTERVAL_MS) {
+                lastInitAttempt = now
+                init()
+            }
+            if (!initialized) return  // Discord not running; skip until next retry window
+        }
 
         if (song == null || (!isPlaying && !AppState.discordRpcShowIdle)) {
             clear()
