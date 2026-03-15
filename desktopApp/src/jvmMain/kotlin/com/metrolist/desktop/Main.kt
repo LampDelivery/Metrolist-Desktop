@@ -262,28 +262,61 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     visibleItems.forEachIndexed { idx, navItem ->
                                         val icons = iconMap[navItem.id] ?: (Icons.Default.QuestionMark to Icons.Default.QuestionMark)
-                                        SidebarNavItem(
-                                            selected = selectedNavIndex == idx && !AppState.showSignIn && !AppState.showSettings && !AppState.showIntegrations && AppState.selectedArtistId == null && AppState.selectedPlaylistId == null && AppState.selectedAlbumId == null,
-                                            onClick = {
-                                                AppState.isExpanded = false // Collapse player on tab switch
-                                                selectedNavIndex = idx
-                                                AppState.showSignIn = false
-                                                AppState.showSettings = false
-                                                AppState.showIntegrations = false
-                                                AppState.selectedLocalPlaylist = null
-                                                AppState.selectedArtistId = null
-                                                AppState.selectedPlaylistId = null
-                                                AppState.selectedAlbumId = null
-                                                searchText = ""
-                                                AppState.searchSummaryPage = null
-                                                AppState.searchResultPage = null
-                                                focusManager.clearFocus()
-                                            },
-                                            icon = if (selectedNavIndex == idx && !AppState.showSettings && !AppState.showIntegrations) icons.second else icons.first,
-                                            label = navItem.label,
-                                            expansionProgress = expansionProgress,
-                                            colorScheme = colorScheme
-                                        )
+                                        val selected = selectedNavIndex == idx && !AppState.showSignIn && !AppState.showSettings && !AppState.showIntegrations && AppState.selectedArtistId == null && AppState.selectedPlaylistId == null && AppState.selectedAlbumId == null
+                                        val onClick = {
+                                            AppState.isExpanded = false
+                                            selectedNavIndex = idx
+                                            AppState.showSignIn = false
+                                            AppState.showSettings = false
+                                            AppState.showIntegrations = false
+                                            AppState.selectedLocalPlaylist = null
+                                            AppState.selectedArtistId = null
+                                            AppState.selectedPlaylistId = null
+                                            AppState.selectedAlbumId = null
+                                            searchText = ""
+                                            AppState.searchSummaryPage = null
+                                            AppState.searchResultPage = null
+                                            focusManager.clearFocus()
+                                        }
+                                        if (isSidebarExpanded) {
+                                            NavigationDrawerItem(
+                                                selected = selected,
+                                                onClick = onClick,
+                                                icon = { Icon(if (selected) icons.second else icons.first, navItem.label) },
+                                                label = { Text(navItem.label) },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = NavigationDrawerItemDefaults.colors(
+                                                    unselectedContainerColor = Color.Transparent
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(56.dp)
+                                                    .clickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null,
+                                                        onClick = onClick
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(52.dp)
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .background(if (selected) colorScheme.secondaryContainer else Color.Transparent),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        if (selected) icons.second else icons.first,
+                                                        navItem.label,
+                                                        tint = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -515,71 +548,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
 
                 AddToPlaylistDialog()
             }
-        }
-    }
-}
-
-@Composable
-fun SidebarNavItem(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector,
-    label: String,
-    expansionProgress: Float,
-    colorScheme: ColorScheme
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(SideRailCollapsedWidth)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(if (selected) colorScheme.secondaryContainer else Color.Transparent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        icon, 
-                        contentDescription = label,
-                        tint = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Text(
-                text = label,
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .graphicsLayer {
-                        alpha = expansionProgress
-                        translationX = (1f - expansionProgress) * -20f
-                    },
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Clip
-            )
         }
     }
 }

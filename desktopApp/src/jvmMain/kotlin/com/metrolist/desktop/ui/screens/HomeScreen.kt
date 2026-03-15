@@ -1,8 +1,5 @@
 package com.metrolist.desktop.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,9 +10,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,26 +66,12 @@ fun HomeScreen(colorScheme: ColorScheme) {
                 val sectionSongs = section.items.filterIsInstance<SongItem>()
                 val isSongsOnly = section.items.isNotEmpty() && section.items.all { it is SongItem }
 
-                // Section Title
-                item(key = "section_title_$index") {
-                    NavigationTitle(
-                        title = section.title,
-                        label = section.subtitle,
-                        onPlayAllClick = if (sectionSongs.isNotEmpty()) {
-                            { AppState.playTrack(sectionSongs.first(), sectionSongs) }
-                        } else null,
-                        onClick = if (section.browseId != null) { {} } else null
-                    )
-                }
-
-                // Section Content
-                item(key = "section_content_$index") {
+                item(key = "section_$index") {
                     if (section.isListStyle || isSongsOnly) {
-                        SongsGridWithNavigation(sectionSongs, colorScheme)
+                        SongsGridSection(section, sectionSongs, colorScheme)
                     } else {
-                        CarouselWithNavigation(section.items, colorScheme, sectionSongs)
+                        CarouselSection(section, sectionSongs, colorScheme)
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
@@ -99,108 +79,83 @@ fun HomeScreen(colorScheme: ColorScheme) {
 }
 
 @Composable
-private fun CarouselWithNavigation(
-    items: List<YTItem>,
-    colorScheme: ColorScheme,
-    sectionSongs: List<SongItem>
+private fun CarouselSection(
+    section: HomeSection,
+    sectionSongs: List<SongItem>,
+    colorScheme: ColorScheme
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    Box {
-        LazyRow(
-            state = listState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(items) { item ->
-                YTGridItem(item, colorScheme) {
-                    if (item is SongItem) AppState.playTrack(item, sectionSongs.ifEmpty { null })
-                }
-            }
-        }
+    NavigationTitle(
+        title = section.title,
+        label = section.subtitle,
+        onPlayAllClick = if (sectionSongs.isNotEmpty()) {
+            { AppState.playTrack(sectionSongs.first(), sectionSongs) }
+        } else null,
+        onClick = if (section.browseId != null) { {} } else null,
+        canScrollBack = listState.canScrollBackward,
+        canScrollForward = listState.canScrollForward,
+        onScrollBack = { scope.launch { listState.animateScrollBy(-480f) } },
+        onScrollForward = { scope.launch { listState.animateScrollBy(480f) } }
+    )
 
-        AnimatedVisibility(
-            visible = listState.canScrollBackward,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            FilledTonalIconButton(
-                onClick = { scope.launch { listState.animateScrollBy(-480f) } },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Outlined.ChevronLeft, null, modifier = Modifier.size(20.dp))
-            }
-        }
-
-        AnimatedVisibility(
-            visible = listState.canScrollForward,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            FilledTonalIconButton(
-                onClick = { scope.launch { listState.animateScrollBy(480f) } },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Outlined.ChevronRight, null, modifier = Modifier.size(20.dp))
+    LazyRow(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(section.items) { item ->
+            YTGridItem(item, colorScheme) {
+                if (item is SongItem) AppState.playTrack(item, sectionSongs.ifEmpty { null })
             }
         }
     }
+
+    Spacer(Modifier.height(24.dp))
 }
 
 @Composable
-private fun SongsGridWithNavigation(
+private fun SongsGridSection(
+    section: HomeSection,
     songs: List<SongItem>,
     colorScheme: ColorScheme
 ) {
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
 
-    Box {
-        LazyHorizontalGrid(
-            rows = GridCells.Fixed(4),
-            state = gridState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(268.dp), // 4 × 64dp rows + 3 × 4dp gaps
-            contentPadding = PaddingValues(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items(songs) { song ->
-                Box(Modifier.width(280.dp)) {
-                    YTListItem(song, colorScheme) {
-                        AppState.playTrack(song, songs)
-                    }
+    NavigationTitle(
+        title = section.title,
+        label = section.subtitle,
+        onPlayAllClick = if (songs.isNotEmpty()) {
+            { AppState.playTrack(songs.first(), songs) }
+        } else null,
+        onClick = if (section.browseId != null) { {} } else null,
+        canScrollBack = gridState.canScrollBackward,
+        canScrollForward = gridState.canScrollForward,
+        onScrollBack = { scope.launch { gridState.animateScrollBy(-560f) } },
+        onScrollForward = { scope.launch { gridState.animateScrollBy(560f) } }
+    )
+
+    LazyHorizontalGrid(
+        rows = GridCells.Fixed(4),
+        state = gridState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(268.dp),
+        contentPadding = PaddingValues(horizontal = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(songs) { song ->
+            Box(Modifier.width(280.dp)) {
+                YTListItem(song, colorScheme) {
+                    AppState.playTrack(song, songs)
                 }
             }
         }
-
-        AnimatedVisibility(
-            visible = gridState.canScrollBackward,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            FilledTonalIconButton(
-                onClick = { scope.launch { gridState.animateScrollBy(-560f) } },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Outlined.ChevronLeft, null, modifier = Modifier.size(20.dp))
-            }
-        }
-
-        AnimatedVisibility(
-            visible = gridState.canScrollForward,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            FilledTonalIconButton(
-                onClick = { scope.launch { gridState.animateScrollBy(560f) } },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Outlined.ChevronRight, null, modifier = Modifier.size(20.dp))
-            }
-        }
     }
+
+    Spacer(Modifier.height(24.dp))
 }

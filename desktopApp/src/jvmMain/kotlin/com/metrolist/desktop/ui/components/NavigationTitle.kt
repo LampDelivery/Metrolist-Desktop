@@ -5,7 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,10 +23,14 @@ fun NavigationTitle(
     thumbnail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onPlayAllClick: (() -> Unit)? = null,
+    canScrollBack: Boolean = false,
+    canScrollForward: Boolean = false,
+    onScrollBack: (() -> Unit)? = null,
+    onScrollForward: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = onClick != null) {
@@ -76,12 +81,21 @@ fun NavigationTitle(
             }
         }
 
-        if (onClick != null) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+        if (onScrollBack != null) {
+            IconButton(
+                onClick = { onScrollBack() },
+                enabled = canScrollBack,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Outlined.ChevronLeft, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+            IconButton(
+                onClick = { onScrollForward?.invoke() },
+                enabled = canScrollForward,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
