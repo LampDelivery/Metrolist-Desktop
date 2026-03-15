@@ -77,35 +77,43 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 // Generate a Config file similar to Android's BuildConfig
 val generateConfig by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/source/config/main/kotlin").get().asFile
+
+    // Resolve keys via providers so Gradle tracks them as task inputs and
+    // invalidates the task whenever a value changes.
+    // Priority: -P flag (CI) → env var → local.properties → empty
+    val lastFmKeyProvider = providers.gradleProperty("LASTFM_API_KEY")
+        .filter { it.isNotEmpty() }
+        .orElse(providers.environmentVariable("LASTFM_API_KEY").filter { it.isNotEmpty() })
+        .orElse(localProperties.getProperty("LASTFM_API_KEY").orEmpty())
+    val lastFmSecretProvider = providers.gradleProperty("LASTFM_SECRET")
+        .filter { it.isNotEmpty() }
+        .orElse(providers.environmentVariable("LASTFM_SECRET").filter { it.isNotEmpty() })
+        .orElse(localProperties.getProperty("LASTFM_SECRET").orEmpty())
+
+    inputs.property("lastFmKey", lastFmKeyProvider)
+    inputs.property("lastFmSecret", lastFmSecretProvider)
     outputs.dir(outputDir)
+    // Never restore this task from the build cache — secrets must always be freshly injected.
+    outputs.cacheIf { false }
+
     doLast {
-        // 1. Gradle -P property (passed explicitly from CI command line — most reliable)
-        // 2. local.properties (local dev)
-        // 3. System environment variable (fallback)
-        // 4. Empty (Last.fm disabled)
-        val lastFmKey = (project.findProperty("LASTFM_API_KEY") as? String)?.takeIf { it.isNotEmpty() }
-            ?: localProperties.getProperty("LASTFM_API_KEY")
-            ?: System.getenv("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
-            ?: ""
-        val lastFmSecret = (project.findProperty("LASTFM_SECRET") as? String)?.takeIf { it.isNotEmpty() }
-            ?: localProperties.getProperty("LASTFM_SECRET")
-            ?: System.getenv("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
-            ?: ""
-        
+        val lastFmKey = lastFmKeyProvider.get().trim()
+        val lastFmSecret = lastFmSecretProvider.get().trim()
+
         if (lastFmKey.isEmpty()) {
             logger.warn("Warning: LASTFM_API_KEY not found. Last.fm features will be disabled.")
         } else {
             println("Configured Last.fm with Key: ${lastFmKey.take(4)}...")
         }
-        
+
         val configFile = outputDir.resolve("com/metrolist/desktop/BuildConfig.kt")
         configFile.parentFile.mkdirs()
         configFile.writeText("""
             package com.metrolist.desktop
 
             object BuildConfig {
-                const val LASTFM_API_KEY = "${lastFmKey.trim()}"
-                const val LASTFM_SECRET = "${lastFmSecret.trim()}"
+                const val LASTFM_API_KEY = "${lastFmKey}"
+                const val LASTFM_SECRET = "${lastFmSecret}"
             }
         """.trimIndent())
     }
