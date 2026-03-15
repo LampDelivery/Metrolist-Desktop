@@ -45,7 +45,8 @@ def ensure_pillow():
     except ImportError:
         print("Installing Pillow...")
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "Pillow", "--quiet"],
+            [sys.executable, "-m", "pip", "install", "Pillow", "--quiet",
+             "--break-system-packages"],
             check=True,
         )
 
