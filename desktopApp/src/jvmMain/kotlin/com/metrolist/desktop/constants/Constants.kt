@@ -18,8 +18,7 @@ enum class SliderStyle {
     DEFAULT,
     WAVY,
     SLIM,
-    SQUIGGLY,
-    BIG
+    SQUIGGLY
 }
 
 enum class RepeatMode { OFF, ALL, ONE }

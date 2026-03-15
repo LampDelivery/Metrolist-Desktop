@@ -95,7 +95,7 @@ object AppState {
     var librarySections by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
     
     var isFloatingPlayer by mutableStateOf(prefs.getBoolean("FLOATING_PLAYER", false))
-    var sliderStyleState by mutableStateOf(SliderStyle.valueOf(prefs.get("SLIDER_STYLE", SliderStyle.DEFAULT.name)))
+    var sliderStyleState by mutableStateOf(runCatching { SliderStyle.valueOf(prefs.get("SLIDER_STYLE", SliderStyle.DEFAULT.name)) }.getOrDefault(SliderStyle.DEFAULT))
     var discordRpcButton1Visible by mutableStateOf(prefs.getBoolean("DISCORD_RPC_BUTTON1_VISIBLE", true))
     var discordRpcButton2Visible by mutableStateOf(prefs.getBoolean("DISCORD_RPC_BUTTON2_VISIBLE", true))
     var shuffleEnabled by mutableStateOf(false)

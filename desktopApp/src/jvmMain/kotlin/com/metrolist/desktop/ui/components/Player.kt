@@ -789,7 +789,7 @@ fun PlayerSlider(
             Box(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(22.dp)
+                    .height(48.dp)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
                             onDragStart = { offset ->
@@ -808,15 +808,15 @@ fun PlayerSlider(
                             onValueChangeFinished()
                         }
                     },
-                contentAlignment = Alignment.TopCenter
+                contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.fillMaxWidth().height(16.dp)) {
+                Canvas(modifier = Modifier.fillMaxWidth().height(48.dp).graphicsLayer { clip = false }) {
                     val fraction = value.coerceIn(0f, 1f)
-                    val cy = size.height / 2f
                     val trackStroke = 5.dp.toPx()
+                    val cy = size.height / 2f  // Track centered vertically
                     val thumbWidth = 5.dp.toPx()
                     val gap = 5.dp.toPx()
-                    val thumbHalfH = size.height / 2f - 1.dp.toPx()
+                    val thumbHalfH = 8.dp.toPx()  // Fixed thumb height allowing overflow
                     val thumbX = (size.width * fraction).coerceIn(thumbWidth / 2f, size.width - thumbWidth / 2f)
 
                     // Active track: left of thumb
@@ -902,7 +902,7 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
         val isNarrow = width < 650.dp
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            val sliderBoxHeight = if (AppState.sliderStyleState == SliderStyle.DEFAULT) 22.dp else 4.dp
+            val sliderBoxHeight = 4.dp
             Box(modifier = Modifier.fillMaxWidth().height(sliderBoxHeight)) {
                 PlayerSlider(
                     value = displayProgress,
