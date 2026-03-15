@@ -1060,7 +1060,21 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
                             Spacer(Modifier.width(8.dp))
                             // Miniplayer pop-out button
                             IconButton(onClick = { AppState.showMiniplayer = !AppState.showMiniplayer }) {
-                                Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Popout Miniplayer", tint = colorScheme.primary)
+                                AnimatedContent(
+                                    targetState = AppState.showMiniplayer,
+                                    transitionSpec = {
+                                        (scaleIn(animationSpec = tween(200)) + fadeIn()).togetherWith(
+                                            scaleOut(animationSpec = tween(200)) + fadeOut()
+                                        )
+                                    },
+                                    label = "miniplayerIcon"
+                                ) { showing ->
+                                    Icon(
+                                        if (showing) Icons.Outlined.CloseFullscreen else Icons.AutoMirrored.Outlined.OpenInNew,
+                                        contentDescription = if (showing) "Close Miniplayer" else "Popout Miniplayer",
+                                        tint = if (showing) colorScheme.primary else colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             Spacer(Modifier.width(8.dp))
                         }
