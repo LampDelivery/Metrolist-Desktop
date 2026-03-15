@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -43,93 +44,85 @@ import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import java.net.URI
+import org.jetbrains.skia.Image as SkiaImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 
 @Composable
 fun AnimatedGradientBackground(color: Color) {
-    val infiniteTransition = rememberInfiniteTransition()
+    val url = AppState.currentTrack?.thumbnail ?: ""
 
-    // Rich palette: primary + complementary + analogous +/- + triadic
-    val palette = remember(color) {
-        val hsv = color.toHsv()
-        val h = hsv[0]
-        val s = hsv[1].coerceAtLeast(0.4f)
-        val v = (hsv[2] * 0.85f).coerceIn(0.35f, 0.85f)
-        listOf(
-            Color.hsv(h, s, v),                                                                          // primary
-            Color.hsv((h + 178f) % 360f, (s * 0.9f).coerceIn(0f, 1f), (v * 0.8f).coerceIn(0.2f, 0.85f)), // complementary
-            Color.hsv((h + 30f) % 360f, s.coerceIn(0f, 1f), (v * 0.95f).coerceIn(0.3f, 0.85f)),          // warm analogous
-            Color.hsv((h - 40f + 360f) % 360f, (s * 0.85f).coerceIn(0f, 1f), (v * 0.75f).coerceIn(0.2f, 0.8f)), // cool analogous
-            Color.hsv((h + 120f) % 360f, (s * 0.7f).coerceIn(0f, 1f), (v * 0.9f).coerceIn(0.25f, 0.85f)), // triadic
-        )
+    // Load album art — state resets to null automatically when url key changes
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(url) {
+        if (url.isBlank()) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val conn = URI(url).toURL().openConnection()
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                bitmap = SkiaImage.makeFromEncoded(conn.getInputStream().readAllBytes()).toComposeImageBitmap()
+            }
+        }
     }
-    // Very dark hue-tinted base instead of flat black
+
+    // Three independent rotations: two full sweeps (opp. directions) + one slow oscillation.
+    // Their interference creates Apple Music's swirling color liquid effect.
+    val infiniteTransition = rememberInfiniteTransition(label = "gradient")
+    val rot1 by infiniteTransition.animateFloat(0f, 360f,
+        infiniteRepeatable(tween(90000, easing = LinearEasing), AnimationRepeatMode.Restart), label = "rot1")
+    val rot2 by infiniteTransition.animateFloat(0f, -360f,
+        infiniteRepeatable(tween(75000, easing = LinearEasing), AnimationRepeatMode.Restart), label = "rot2")
+    val rot3 by infiniteTransition.animateFloat(-18f, 18f,
+        infiniteRepeatable(tween(55000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "rot3")
+
+    // Fade art in once loaded; fall back to near-black tinted base while loading
+    val artAlpha by animateFloatAsState(if (bitmap != null) 1f else 0f, tween(700), label = "artAlpha")
     val baseColor = remember(color) {
         val hsv = color.toHsv()
-        Color.hsv(hsv[0], (hsv[1] * 0.2f).coerceIn(0f, 1f), 0.07f)
+        Color.hsv(hsv[0], (hsv[1] * 0.10f).coerceIn(0f, 0.20f), 0.05f)
     }
 
-    // Blob 0 – primary, drifts from top-left toward top-center
-    val b0x by infiniteTransition.animateFloat(-0.27f,  0.09f, infiniteRepeatable(tween(22000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    val b0y by infiniteTransition.animateFloat(-0.28f,  0.06f, infiniteRepeatable(tween(19000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    // Blob 1 – complementary, drifts from bottom-right toward center-right
-    val b1x by infiniteTransition.animateFloat( 0.22f, -0.07f, infiniteRepeatable(tween(24000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    val b1y by infiniteTransition.animateFloat( 0.25f, -0.08f, infiniteRepeatable(tween(20000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    // Blob 2 – warm analogous, top-right
-    val b2x by infiniteTransition.animateFloat( 0.26f, -0.06f, infiniteRepeatable(tween(17000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    val b2y by infiniteTransition.animateFloat(-0.24f,  0.13f, infiniteRepeatable(tween(21000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    // Blob 3 – cool analogous, bottom-left
-    val b3x by infiniteTransition.animateFloat(-0.25f,  0.10f, infiniteRepeatable(tween(26000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    val b3y by infiniteTransition.animateFloat( 0.22f, -0.07f, infiniteRepeatable(tween(18000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    // Blob 4 – triadic accent, slow center drift
-    val b4x by infiniteTransition.animateFloat(-0.10f,  0.16f, infiniteRepeatable(tween(23000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-    val b4y by infiniteTransition.animateFloat(-0.10f,  0.18f, infiniteRepeatable(tween(16000, easing = LinearEasing), AnimationRepeatMode.Reverse))
-
-    Box(modifier = Modifier.fillMaxSize().background(baseColor)) {
-        // Heavy-blur blob layer
-        Canvas(modifier = Modifier.fillMaxSize().blur(160.dp)) {
-            val cx = center.x; val cy = center.y; val d = size.maxDimension
-
-            // primary – tall ellipse
-            drawOval(palette[0],
-                topLeft = androidx.compose.ui.geometry.Offset(cx + size.width * b0x - d, cy + size.height * b0y - d * 1.25f),
-                size = androidx.compose.ui.geometry.Size(d * 2f, d * 2.5f), alpha = 0.75f)
-            // complementary – wide ellipse
-            drawOval(palette[1],
-                topLeft = androidx.compose.ui.geometry.Offset(cx + size.width * b1x - d * 1.235f, cy + size.height * b1y - d * 0.95f),
-                size = androidx.compose.ui.geometry.Size(d * 2.47f, d * 1.9f), alpha = 0.70f)
-            // warm analogous – slightly wide
-            drawOval(palette[2],
-                topLeft = androidx.compose.ui.geometry.Offset(cx + size.width * b2x - d * 0.858f, cy + size.height * b2y - d * 0.702f),
-                size = androidx.compose.ui.geometry.Size(d * 1.716f, d * 1.404f), alpha = 0.60f)
-            // cool analogous – slightly tall
-            drawOval(palette[3],
-                topLeft = androidx.compose.ui.geometry.Offset(cx + size.width * b3x - d * 0.738f, cy + size.height * b3y - d * 0.943f),
-                size = androidx.compose.ui.geometry.Size(d * 1.476f, d * 1.886f), alpha = 0.55f)
-            // triadic – round accent
-            drawOval(palette[4],
-                topLeft = androidx.compose.ui.geometry.Offset(cx + size.width * b4x - d * 0.62f, cy + size.height * b4y - d * 0.62f),
-                size = androidx.compose.ui.geometry.Size(d * 1.24f, d * 1.24f), alpha = 0.45f)
+    Box(Modifier.fillMaxSize().clip(RectangleShape).background(baseColor)) {
+        // Art layer — 3 scaled + rotated copies of the album art, blurred together.
+        // This is the same technique Apple Music uses: twist copies of the art, then blur.
+        val art = bitmap
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(100.dp, BlurredEdgeTreatment.Unbounded)
+                .alpha(artAlpha)
+        ) {
+            if (art != null) {
+                // Layer 1 — slow clockwise, large scale
+                Image(art, null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 3.0f; scaleY = 3.0f; rotationZ = rot1 })
+                // Layer 2 — counter-clockwise, slightly different scale + lower opacity
+                Image(art, null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.5f; scaleY = 2.5f; rotationZ = rot2; alpha = 0.75f })
+                // Layer 3 — slow oscillation, creates color interference with the other two
+                Image(art, null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.8f; scaleY = 2.8f; rotationZ = rot3; alpha = 0.55f })
+            }
         }
 
-        // Radial vignette – black edges, clear center (Apple Music signature)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawRect(
-                brush = Brush.radialGradient(
-                    colorStops = arrayOf(
-                        0.0f to Color.Transparent,
-                        0.55f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.60f)
-                    ),
-                    center = center,
-                    radius = size.maxDimension * 0.72f
-                )
-            )
+        // Radial vignette — dark edges, lit center (Apple Music signature)
+        Canvas(Modifier.fillMaxSize()) {
+            drawRect(Brush.radialGradient(
+                colorStops = arrayOf(0f to Color.Transparent, 0.40f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.82f)),
+                center = center, radius = size.maxDimension * 0.65f
+            ))
         }
-
-        // Thin dark scrim for text readability
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.10f)))
+        // Bottom-to-dark gradient for player UI legibility
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+            0f to Color.Transparent, 0.60f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f)
+        )))
+        // Uniform dark scrim for text contrast
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.20f)))
     }
 }
 
