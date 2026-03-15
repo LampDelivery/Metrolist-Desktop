@@ -789,7 +789,7 @@ fun PlayerSlider(
             Box(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .fillMaxHeight()
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
                             onDragStart = { offset ->
@@ -810,7 +810,7 @@ fun PlayerSlider(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.fillMaxWidth().height(48.dp).graphicsLayer { clip = false }) {
+                Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight().graphicsLayer { clip = false }) {
                     val fraction = value.coerceIn(0f, 1f)
                     val trackStroke = 5.dp.toPx()
                     val cy = size.height / 2f  // Track centered vertically
