@@ -23,13 +23,21 @@ fun SettingsScreen(colorScheme: ColorScheme) {
     Column(modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(24.dp))
-        
+
         SettingsGroup(title = "Appearance", colorScheme = colorScheme) {
             SettingsToggle(
                 title = "Night Mode",
                 subtitle = "Uses absolute black for backgrounds",
                 checked = AppState.pureBlack,
                 onCheckedChange = { AppState.togglePureBlack(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggle(
+                title = "Auto Night Mode",
+                subtitle = "Enables night mode automatically when album art is dark",
+                checked = AppState.autoNightMode,
+                onCheckedChange = { AppState.toggleAutoNightMode(it) },
                 colorScheme = colorScheme
             )
 
@@ -48,7 +56,7 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 onCheckedChange = { AppState.toggleAnimatedGradient(it) },
                 colorScheme = colorScheme
             )
-            
+
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Slider Style", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(8.dp))
@@ -68,6 +76,52 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 subtitle = "Places the player controls in the middle and song info on the left",
                 checked = AppState.swapPlayerControls,
                 onCheckedChange = { AppState.toggleSwapPlayerControls(it) },
+                colorScheme = colorScheme
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        SettingsGroup(title = "Player", colorScheme = colorScheme) {
+            SettingsToggle(
+                title = "Pure Black Miniplayer",
+                subtitle = "Uses absolute black for the miniplayer background",
+                checked = AppState.pureBlackMiniPlayer,
+                onCheckedChange = { AppState.togglePureBlackMiniPlayer(it) },
+                colorScheme = colorScheme
+            )
+
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Default tab on launch", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("home" to "Home", "library" to "Library", "history" to "History", "stats" to "Stats").forEach { (id, label) ->
+                        FilterChip(
+                            selected = AppState.defaultOpenTab == id,
+                            onClick = { AppState.updateDefaultOpenTab(id) },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        SettingsGroup(title = "Content", colorScheme = colorScheme) {
+            SettingsToggle(
+                title = "Hide explicit content",
+                subtitle = "Filters songs marked as explicit from search and recommendations",
+                checked = AppState.hideExplicit,
+                onCheckedChange = { AppState.toggleHideExplicit(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggle(
+                title = "Hide video songs",
+                subtitle = "Hides songs that are music videos rather than audio tracks",
+                checked = AppState.hideVideoSongs,
+                onCheckedChange = { AppState.toggleHideVideoSongs(it) },
                 colorScheme = colorScheme
             )
         }
@@ -98,6 +152,40 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 }
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+
+        SettingsGroup(title = "Privacy", colorScheme = colorScheme) {
+            SettingsToggle(
+                title = "Pause listen history",
+                subtitle = "Stops recording played songs to your local history",
+                checked = AppState.pauseListenHistory,
+                onCheckedChange = { AppState.togglePauseListenHistory(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsActionRow(
+                title = "Clear listen history",
+                subtitle = "Permanently deletes all locally stored play history",
+                colorScheme = colorScheme,
+                onClick = { AppState.clearListenHistory() }
+            )
+
+            SettingsToggle(
+                title = "Pause search history",
+                subtitle = "Stops saving your search queries",
+                checked = AppState.pauseSearchHistory,
+                onCheckedChange = { AppState.togglePauseSearchHistory(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsActionRow(
+                title = "Clear search history",
+                subtitle = "Removes all saved search queries",
+                colorScheme = colorScheme,
+                onClick = { AppState.clearSearchHistory() }
+            )
+        }
     }
 }
 
@@ -117,8 +205,8 @@ fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onCheckedC
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(16.dp), 
-        verticalAlignment = Alignment.CenterVertically, 
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(Modifier.weight(1f)) {
@@ -126,7 +214,7 @@ fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onCheckedC
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
         }
         Switch(
-            checked = checked, 
+            checked = checked,
             onCheckedChange = onCheckedChange,
             thumbContent = {
                 Icon(
@@ -136,5 +224,22 @@ fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onCheckedC
                 )
             }
         )
+    }
+}
+
+@Composable
+fun SettingsActionRow(title: String, subtitle: String, colorScheme: ColorScheme, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = colorScheme.error)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+        }
     }
 }

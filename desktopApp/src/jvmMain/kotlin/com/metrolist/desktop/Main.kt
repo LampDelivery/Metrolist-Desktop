@@ -80,11 +80,21 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
         val outlineColor = if (AppState.isWindowFocused && !AppState.isMaximized) colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent
         
         var searchText by remember { mutableStateOf("") }
-        var selectedNavIndex by remember { mutableIntStateOf(0) }
+        var selectedNavIndex by remember { mutableIntStateOf(
+            AppState.sidebarNavItems.filter { it.visible }
+                .indexOfFirst { it.id == AppState.defaultOpenTab }
+                .coerceAtLeast(0)
+        ) }
         var isSidebarExpanded by remember { mutableStateOf(false) }
 
         val visibleItems = if (AppState.isEditingSidebar) AppState.sidebarNavItems else AppState.sidebarNavItems.filter { it.visible }
-        val currentTitle = if (AppState.showIntegrations) "Integrations" else visibleItems.getOrNull(selectedNavIndex)?.label ?: "Metrolist"
+        val currentTitle = when (AppState.selectedLocalPlaylist) {
+            "top50" -> "My Top 50"
+            "downloaded" -> "Downloaded"
+            "cached" -> "Cached"
+            "uploaded" -> "Uploaded"
+            else -> if (AppState.showIntegrations) "Integrations" else visibleItems.getOrNull(selectedNavIndex)?.label ?: "Metrolist"
+        }
 
         Surface(
             modifier = Modifier.fillMaxSize()
@@ -250,12 +260,13 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                         val icons = iconMap[navItem.id] ?: (Icons.Default.QuestionMark to Icons.Default.QuestionMark)
                                         SidebarNavItem(
                                             selected = selectedNavIndex == idx && !AppState.showSignIn && !AppState.showSettings && !AppState.showIntegrations && AppState.selectedArtistId == null && AppState.selectedPlaylistId == null && AppState.selectedAlbumId == null,
-                                            onClick = { 
+                                            onClick = {
                                                 AppState.isExpanded = false // Collapse player on tab switch
                                                 selectedNavIndex = idx
                                                 AppState.showSignIn = false
                                                 AppState.showSettings = false
                                                 AppState.showIntegrations = false
+                                                AppState.selectedLocalPlaylist = null
                                                 AppState.selectedArtistId = null
                                                 AppState.selectedPlaylistId = null
                                                 AppState.selectedAlbumId = null
@@ -382,20 +393,16 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                         ?.filter { it.id !in AppState.hiddenPlaylistIds }
                                         ?: emptyList()
                                 )
-                                if (rawPlaylists.isNotEmpty()) {
-                                    LazyColumn(
-                                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        contentPadding = PaddingValues(vertical = 4.dp)
-                                    ) {
-                                        items(rawPlaylists) { playlist ->
-                                            CollapsedPlaylistThumb(playlist, colorScheme) {
-                                                focusManager.clearFocus()
-                                            }
+                                LazyColumn(
+                                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    items(rawPlaylists) { playlist ->
+                                        CollapsedPlaylistThumb(playlist, colorScheme) {
+                                            focusManager.clearFocus()
                                         }
                                     }
-                                } else {
-                                    Spacer(Modifier.weight(1f))
                                 }
                             }
                             
@@ -412,6 +419,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             AppState.showSignIn -> "signIn"
                             AppState.showSettings -> "settings"
                             AppState.showIntegrations -> "integrations"
+                            AppState.selectedLocalPlaylist != null -> "localPlaylist"
                             AppState.selectedArtistId != null -> "artist"
                             AppState.selectedPlaylistId != null -> "playlist"
                             AppState.selectedAlbumId != null -> "album"
@@ -459,6 +467,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                     }
                                 }
                                 "search" -> SearchResultsList(colorScheme)
+                                "localPlaylist" -> LocalPlaylistScreen(AppState.selectedLocalPlaylist ?: "top50", colorScheme)
                                 "home" -> HomeScreen(colorScheme)
                                 "library" -> LibraryScreen(AppState.librarySections, colorScheme)
                                 "history" -> HistoryScreen(colorScheme)

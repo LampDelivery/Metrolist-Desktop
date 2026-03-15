@@ -215,7 +215,9 @@ object AppState {
                     }
                     fetchLyrics(song)
                     // Record play in persistent history
-                    withContext(Dispatchers.IO) { HistoryRepository.recordPlay(song) }
+                    if (!pauseListenHistory) {
+                        withContext(Dispatchers.IO) { HistoryRepository.recordPlay(song) }
+                    }
                     refreshHistory()
                 } else {
                     currentLyrics = null
@@ -366,7 +368,7 @@ object AppState {
     }
 
     fun addSearchQuery(query: String) {
-        if (query.isBlank()) return
+        if (query.isBlank() || pauseSearchHistory) return
         val current = searchHistory.toMutableList()
         current.remove(query)
         current.add(0, query)
@@ -448,6 +450,21 @@ object AppState {
     // Theme Settings
     var pureBlack by mutableStateOf(prefs.getBoolean("PURE_BLACK", false))
     var pureBlackMiniPlayer by mutableStateOf(prefs.getBoolean("PURE_BLACK_MINI_PLAYER", false))
+    var autoNightMode by mutableStateOf(prefs.getBoolean("AUTO_NIGHT_MODE", false))
+
+    // Content Settings
+    var hideExplicit by mutableStateOf(prefs.getBoolean("HIDE_EXPLICIT", false))
+    var hideVideoSongs by mutableStateOf(prefs.getBoolean("HIDE_VIDEO_SONGS", false))
+
+    // Privacy Settings
+    var pauseListenHistory by mutableStateOf(prefs.getBoolean("PAUSE_LISTEN_HISTORY", false))
+    var pauseSearchHistory by mutableStateOf(prefs.getBoolean("PAUSE_SEARCH_HISTORY", false))
+
+    // Default open tab (nav item ID)
+    var defaultOpenTab by mutableStateOf(prefs.get("DEFAULT_OPEN_TAB", "home"))
+
+    // Local playlist nav ("top50", "downloaded", "cached", "uploaded")
+    var selectedLocalPlaylist: String? by mutableStateOf(null)
 
     fun playTrack(track: SongItem, list: List<SongItem>? = null) {
         scope.launch {
@@ -555,7 +572,7 @@ object AppState {
     private fun refreshHistory() {
         scope.launch(Dispatchers.IO) {
             val recent = HistoryRepository.getRecentHistory(50)
-            val top    = HistoryRepository.getMostPlayed(20)
+            val top    = HistoryRepository.getMostPlayed(50)
             withContext(Dispatchers.Main) {
                 historyEntries = recent
                 topSongs = top
@@ -690,6 +707,22 @@ object AppState {
         prefs.putBoolean("PURE_BLACK", enabled)
         try { prefs.flush() } catch (_: Exception) {}
     }
+
+    fun toggleAutoNightMode(enabled: Boolean) {
+        autoNightMode = enabled
+        prefs.putBoolean("AUTO_NIGHT_MODE", enabled)
+        // Immediately apply to the current track using seed color luma as a proxy
+        if (enabled) {
+            val luma = 0.299f * seedColor.red + 0.587f * seedColor.green + 0.114f * seedColor.blue
+            pureBlack = luma <= 0.3f
+        }
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    /** Called after each track's album art is decoded; no-op when autoNightMode is off. */
+    fun applyAutoNightMode(isBright: Boolean) {
+        if (autoNightMode) pureBlack = !isBright
+    }
     
     fun toggleMiniplayerNightMode(enabled: Boolean) {
         miniplayerNightMode = enabled
@@ -706,6 +739,52 @@ object AppState {
     fun toggleAnimatedGradient(enabled: Boolean) {
         animatedGradient = enabled
         prefs.putBoolean("ANIMATED_GRADIENT", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleHideExplicit(enabled: Boolean) {
+        hideExplicit = enabled
+        prefs.putBoolean("HIDE_EXPLICIT", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleHideVideoSongs(enabled: Boolean) {
+        hideVideoSongs = enabled
+        prefs.putBoolean("HIDE_VIDEO_SONGS", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun togglePauseListenHistory(enabled: Boolean) {
+        pauseListenHistory = enabled
+        prefs.putBoolean("PAUSE_LISTEN_HISTORY", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun togglePauseSearchHistory(enabled: Boolean) {
+        pauseSearchHistory = enabled
+        prefs.putBoolean("PAUSE_SEARCH_HISTORY", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun clearListenHistory() {
+        scope.launch(Dispatchers.IO) {
+            HistoryRepository.clearHistory()
+            withContext(Dispatchers.Main) {
+                historyEntries = emptyList()
+                topSongs = emptyList()
+            }
+        }
+    }
+
+    fun clearSearchHistory() {
+        searchHistory = emptyList()
+        prefs.put("SEARCH_HISTORY", "")
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateDefaultOpenTab(tabId: String) {
+        defaultOpenTab = tabId
+        prefs.put("DEFAULT_OPEN_TAB", tabId)
         try { prefs.flush() } catch (_: Exception) {}
     }
 

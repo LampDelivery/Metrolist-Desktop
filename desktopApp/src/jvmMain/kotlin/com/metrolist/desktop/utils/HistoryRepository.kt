@@ -140,6 +140,14 @@ object HistoryRepository {
             .map { ArtistStat(it.key, it.value) }
     } catch (_: Exception) { emptyList() }
 
+    fun clearHistory() {
+        try {
+            connection.createStatement().use { stmt ->
+                stmt.execute("DELETE FROM play_history")
+            }
+        } catch (_: Exception) {}
+    }
+
     fun getRecentHistorySince(sinceMs: Long, limit: Int = 2000): List<HistoryEntry> = try {
         connection.prepareStatement(
             "SELECT song_id, title, artists, thumbnail_url, played_at FROM play_history WHERE played_at >= ? ORDER BY played_at DESC LIMIT ?"

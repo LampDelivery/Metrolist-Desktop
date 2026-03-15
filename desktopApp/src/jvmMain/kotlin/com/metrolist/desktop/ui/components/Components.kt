@@ -125,7 +125,11 @@ fun AsyncImage(
                 bitmap = loaded
                 if (extractColor) {
                     val sampledColor = PlayerColorExtractor.extractSeedColor(skiaImage)
-                    withContext(Dispatchers.Main) { AppState.seedColor = sampledColor }
+                    val bright = PlayerColorExtractor.isArtworkBright(skiaImage)
+                    withContext(Dispatchers.Main) {
+                        AppState.seedColor = sampledColor
+                        AppState.applyAutoNightMode(bright)
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

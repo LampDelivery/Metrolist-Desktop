@@ -131,6 +131,28 @@ object PlayerColorExtractor {
         return Color(bestColorArgb)
     }
 
+    /** Returns true when the artwork is predominantly bright/light. */
+    fun isArtworkBright(image: Image): Boolean {
+        val bitmap = Bitmap()
+        val imageInfo = ImageInfo(image.width, image.height, ColorType.RGBA_8888, ColorAlphaType.PREMUL)
+        bitmap.allocPixels(imageInfo)
+        Canvas(bitmap).drawImage(image, 0f, 0f)
+        val pixels = bitmap.readPixels(imageInfo, bitmap.rowBytes, 0, 0) ?: return false
+        val step = (image.width * image.height / 1000).coerceAtLeast(1)
+        var total = 0.0
+        var count = 0
+        for (i in 0 until (image.width * image.height) step step) {
+            val off = i * 4
+            if (off + 2 >= pixels.size) break
+            val r = (pixels[off].toInt() and 0xFF) / 255f
+            val g = (pixels[off + 1].toInt() and 0xFF) / 255f
+            val b = (pixels[off + 2].toInt() and 0xFF) / 255f
+            total += 0.299 * r + 0.587 * g + 0.114 * b
+            count++
+        }
+        return count > 0 && (total / count) > 0.4
+    }
+
     fun getGradientColors(accentColor: Color): List<Color> {
         val hsv = accentColor.toHsv()
         val c1 = Color.hsv(hsv[0], hsv[1].coerceAtLeast(0.7f), 0.4f)
