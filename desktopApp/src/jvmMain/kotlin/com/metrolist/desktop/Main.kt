@@ -845,7 +845,17 @@ private fun saveWindowState(state: WindowState) {
 }
 
 fun main() {
-    Platform.startup {}
+    // Write uncaught exceptions to a log file — installer builds have no visible console.
+    val logDir = java.io.File(System.getProperty("user.home"), ".metrolist")
+    logDir.mkdirs()
+    val logFile = java.io.File(logDir, "crash.log")
+    Thread.setDefaultUncaughtExceptionHandler { t, e ->
+        logFile.appendText("[${java.time.Instant.now()}] Thread '${t.name}':\n${e.stackTraceToString()}\n\n")
+    }
+
+    // Set implicitExit=false in the startup callback (runs on the JFX thread) so JavaFX
+    // never auto-shuts-down just because there are no open Stage windows.
+    Platform.startup { Platform.setImplicitExit(false) }
     
     LastFM.initialize(
         apiKey = BuildConfig.LASTFM_API_KEY,

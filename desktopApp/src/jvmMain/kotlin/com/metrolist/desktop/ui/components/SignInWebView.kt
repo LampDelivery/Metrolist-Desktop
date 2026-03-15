@@ -30,9 +30,6 @@ fun EmbeddedSignInView(
             CookieHandler.setDefault(cookieManager)
 
             val jfxPanel = JFXPanel()
-            // CRITICAL: without this, JavaFX sees no open Stage windows (JFXPanel doesn't
-            // count) and calls Platform.exit() ~1 second after setup, killing the whole app.
-            Platform.setImplicitExit(false)
             val container = JPanel().apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
                 add(jfxPanel)

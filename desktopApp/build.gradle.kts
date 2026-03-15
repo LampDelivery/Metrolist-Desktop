@@ -172,6 +172,7 @@ compose.desktop {
                 "java.sql",              // JDBC — required by SQLite / HistoryRepository
                 "java.xml",             // XML parsing — used by various libs
                 "jdk.crypto.ec",         // EC cipher suites — required for TLS with YouTube
+                "jdk.jsobject",          // JSObject — required by WebEngine.executeScript() in sign-in WebView
                 "jdk.unsupported",       // sun.misc.Unsafe and other internal APIs
                 "jdk.unsupported.desktop" // SwingInterOpUtils — fixes JavaFX-Swing crash on Linux
             )
