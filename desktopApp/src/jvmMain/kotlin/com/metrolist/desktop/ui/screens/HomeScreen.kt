@@ -46,10 +46,17 @@ fun HomeScreen(colorScheme: ColorScheme) {
     } else {
         val lazyListState = rememberLazyListState()
 
+        LaunchedEffect(lazyListState) {
+            snapshotFlow {
+                if (lazyListState.firstVisibleItemIndex > 0) Int.MAX_VALUE
+                else lazyListState.firstVisibleItemScrollOffset
+            }.collect { AppState.topBarScrollOffset = it }
+        }
+
         LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(top = 48.dp, bottom = 32.dp)
         ) {
             // Chips Row
             item {

@@ -44,7 +44,8 @@ data class ArtistItem(
     val banner: String? = null,
     val description: String? = null,
     val monthlyListeners: String? = null,
-    val radioEndpointParams: String? = null
+    val radioEndpointParams: String? = null,
+    val isSubscribed: Boolean = false
 ) : YTItem()
 
 @Serializable

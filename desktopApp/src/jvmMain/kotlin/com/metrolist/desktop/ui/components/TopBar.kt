@@ -43,6 +43,7 @@ import com.metrolist.shared.api.innertube.models.AccountInfo
 fun WindowScope.CustomTitleBar(
     title: String,
     colorScheme: ColorScheme,
+    backgroundAlpha: Float = 1f,
     searchText: String,
     onSearchChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -51,14 +52,14 @@ fun WindowScope.CustomTitleBar(
 ) {
     var isSearchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    
+
     val searchWidth by animateDpAsState(
         targetValue = if (isSearchFocused) 420.dp else 280.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
     )
 
     WindowDraggableArea {
-        Surface(color = colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        Surface(color = colorScheme.surfaceContainer.copy(alpha = backgroundAlpha), modifier = Modifier.fillMaxWidth().height(48.dp)) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), 
                 verticalAlignment = Alignment.CenterVertically

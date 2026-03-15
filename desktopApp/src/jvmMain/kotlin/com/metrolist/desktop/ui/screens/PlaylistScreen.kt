@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -113,7 +113,7 @@ private fun PlaylistWideLayout(playlistInfo: PlaylistItem?, songs: List<SongItem
                         shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 20.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.PlayArrow, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Play", style = MaterialTheme.typography.labelLarge)
                     }
@@ -167,7 +167,7 @@ private fun PlaylistNarrowLayout(playlistInfo: PlaylistItem?, songs: List<SongIt
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { if (songs.isNotEmpty()) AppState.playTrack(songs.first(), songs) }, modifier = Modifier.height(36.dp), shape = CircleShape, contentPadding = PaddingValues(horizontal = 16.dp)) {
-                            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.PlayArrow, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Play", style = MaterialTheme.typography.labelLarge)
                         }

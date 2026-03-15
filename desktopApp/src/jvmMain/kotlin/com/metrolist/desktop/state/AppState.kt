@@ -72,6 +72,8 @@ object AppState {
     var selectedArtistId by mutableStateOf<String?>(null)
     var artistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
     var isArtistLoading by mutableStateOf(false)
+    var artistIsSubscribed by mutableStateOf(false)
+    var topBarScrollOffset by mutableStateOf(Int.MAX_VALUE)
 
     var selectedPlaylistId by mutableStateOf<String?>(null)
     var playlistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
@@ -948,13 +950,53 @@ object AppState {
         selectedPlaylistId = null
         selectedAlbumId = null
         isArtistLoading = true
+        artistIsSubscribed = false
         scope.launch {
             try {
-                artistData = GlobalYouTubeRepository.instance.getArtist(id)
+                val data = GlobalYouTubeRepository.instance.getArtist(id)
+                artistData = data
+                artistIsSubscribed = (data["header"]?.firstOrNull() as? ArtistItem)?.isSubscribed ?: false
             } catch (_: Exception) {}
             finally {
                 isArtistLoading = false
             }
+        }
+    }
+
+    fun toggleArtistSubscription() {
+        val artistInfo = artistData["header"]?.firstOrNull() as? ArtistItem ?: return
+        val newState = !artistIsSubscribed
+        artistIsSubscribed = newState // optimistic update
+        scope.launch {
+            GlobalYouTubeRepository.instance.subscribeChannel(artistInfo.id, newState)
+        }
+    }
+
+    fun startArtistRadio() {
+        val artistInfo = artistData["header"]?.firstOrNull() as? ArtistItem ?: return
+        scope.launch {
+            try {
+                val radioSongs = GlobalYouTubeRepository.instance.startArtistRadio(artistInfo.id)
+                if (radioSongs.isNotEmpty()) {
+                    queue.setQueue(radioSongs, 0)
+                    val url = GlobalYouTubeRepository.instance.getStreamUrl(radioSongs[0].id)
+                    if (url != null) player.play(radioSongs[0], url)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun shuffleArtistSongs() {
+        val songs = artistData.entries
+            .filter { it.key != "header" }
+            .flatMap { it.value }
+            .filterIsInstance<SongItem>()
+        if (songs.isEmpty()) return
+        val shuffled = songs.shuffled()
+        scope.launch {
+            queue.setQueue(shuffled, 0)
+            val url = GlobalYouTubeRepository.instance.getStreamUrl(shuffled[0].id)
+            if (url != null) player.play(shuffled[0], url)
         }
     }
 

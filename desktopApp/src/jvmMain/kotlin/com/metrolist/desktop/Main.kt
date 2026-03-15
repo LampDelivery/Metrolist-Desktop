@@ -96,6 +96,24 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
             else -> if (AppState.showIntegrations) "Integrations" else visibleItems.getOrNull(selectedNavIndex)?.label ?: "Metrolist"
         }
 
+        val pageKey = when {
+            AppState.showSignIn -> "signIn"
+            AppState.showSettings -> "settings"
+            AppState.showIntegrations -> "integrations"
+            AppState.selectedLocalPlaylist != null -> "localPlaylist"
+            AppState.selectedArtistId != null -> "artist"
+            AppState.selectedPlaylistId != null -> "playlist"
+            AppState.selectedAlbumId != null -> "album"
+            searchText.isNotEmpty() || AppState.searchSummaryPage != null || AppState.searchResultPage != null -> "search"
+            else -> visibleItems.getOrNull(selectedNavIndex)?.id ?: "home"
+        }
+
+        val topBarAlpha by animateFloatAsState(
+            targetValue = if (AppState.isExpanded) 1f else (AppState.topBarScrollOffset / 300f).coerceIn(0f, 1f),
+            animationSpec = tween(200, easing = LinearEasing),
+            label = "topBarAlpha"
+        )
+
         Surface(
             modifier = Modifier.fillMaxSize()
                 .clip(RoundedCornerShape(windowCornerRadius))
@@ -103,20 +121,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
             color = colorScheme.background
         ) {
             Column(Modifier.fillMaxSize()) {
-                // Top Bar 
-                Box(Modifier.fillMaxWidth().zIndex(1f)) {
-                    CustomTitleBar(
-                        title = currentTitle,
-                        colorScheme = colorScheme,
-                        searchText = searchText,
-                        onSearchChange = { 
-                            searchText = it
-                        },
-                        onClose = onClose,
-                        onMinimize = onMinimize,
-                        onMaximize = onMaximize
-                    )
-                }
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val expansionProgress by animateFloatAsState(
@@ -415,68 +419,68 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { focusManager.clearFocus() }) {
-                        val pageKey = when {
-                            AppState.showSignIn -> "signIn"
-                            AppState.showSettings -> "settings"
-                            AppState.showIntegrations -> "integrations"
-                            AppState.selectedLocalPlaylist != null -> "localPlaylist"
-                            AppState.selectedArtistId != null -> "artist"
-                            AppState.selectedPlaylistId != null -> "playlist"
-                            AppState.selectedAlbumId != null -> "album"
-                            searchText.isNotEmpty() || AppState.searchSummaryPage != null || AppState.searchResultPage != null -> "search"
-                            else -> visibleItems.getOrNull(selectedNavIndex)?.id ?: "home"
+                        LaunchedEffect(pageKey) {
+                            AppState.topBarScrollOffset = if (pageKey in setOf("home", "artist")) 0 else Int.MAX_VALUE
                         }
-                        com.metrolist.desktop.ui.components.PageTransition(
-                            pageKey = pageKey
-                        ) { key ->
-                            when (key) {
-                                "signIn" -> EmbeddedSignInView(
-                                    onAuthDataExtracted = { cookie, visitorData, dataSyncId -> AppState.updateAuth(cookie, visitorData, dataSyncId) },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                "settings" -> SettingsScreen(colorScheme)
-                                "integrations" -> IntegrationsScreen(colorScheme)
-                                "artist" -> {
-                                    val artistId = AppState.selectedArtistId
-                                    if (artistId != null) {
-                                        ArtistScreen(colorScheme)
-                                    } else {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text("No artist selected")
+
+                        // Screens that don't use a full-bleed header get 48dp top inset
+                        val useTopPadding = pageKey !in setOf("home", "artist")
+                        Box(modifier = Modifier.fillMaxSize()
+                            .then(if (useTopPadding) Modifier.padding(top = 48.dp) else Modifier)
+                        ) {
+                            com.metrolist.desktop.ui.components.PageTransition(
+                                pageKey = pageKey
+                            ) { key ->
+                                when (key) {
+                                    "signIn" -> EmbeddedSignInView(
+                                        onAuthDataExtracted = { cookie, visitorData, dataSyncId -> AppState.updateAuth(cookie, visitorData, dataSyncId) },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    "settings" -> SettingsScreen(colorScheme)
+                                    "integrations" -> IntegrationsScreen(colorScheme)
+                                    "artist" -> {
+                                        val artistId = AppState.selectedArtistId
+                                        if (artistId != null) {
+                                            ArtistScreen(colorScheme)
+                                        } else {
+                                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text("No artist selected")
+                                            }
                                         }
                                     }
-                                }
-                                "playlist" -> {
-                                    val playlistId = AppState.selectedPlaylistId
-                                    if (playlistId != null) {
-                                        PlaylistScreen(colorScheme)
-                                    } else {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text("No playlist selected")
+                                    "playlist" -> {
+                                        val playlistId = AppState.selectedPlaylistId
+                                        if (playlistId != null) {
+                                            PlaylistScreen(colorScheme)
+                                        } else {
+                                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text("No playlist selected")
+                                            }
                                         }
                                     }
-                                }
-                                "album" -> {
-                                    val albumId = AppState.selectedAlbumId
-                                    if (albumId != null) {
-                                        AlbumScreen(albumId, colorScheme)
-                                    } else {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text("No album selected")
+                                    "album" -> {
+                                        val albumId = AppState.selectedAlbumId
+                                        if (albumId != null) {
+                                            AlbumScreen(albumId, colorScheme)
+                                        } else {
+                                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text("No album selected")
+                                            }
                                         }
                                     }
+                                    "search" -> SearchResultsList(colorScheme)
+                                    "localPlaylist" -> LocalPlaylistScreen(AppState.selectedLocalPlaylist ?: "top50", colorScheme)
+                                    "home" -> HomeScreen(colorScheme)
+                                    "library" -> LibraryScreen(AppState.librarySections, colorScheme)
+                                    "history" -> HistoryScreen(colorScheme)
+                                    "stats" -> StatsScreen(colorScheme)
+                                    "together" -> TogetherScreen(colorScheme)
+                                    else -> HomeScreen(colorScheme)
                                 }
-                                "search" -> SearchResultsList(colorScheme)
-                                "localPlaylist" -> LocalPlaylistScreen(AppState.selectedLocalPlaylist ?: "top50", colorScheme)
-                                "home" -> HomeScreen(colorScheme)
-                                "library" -> LibraryScreen(AppState.librarySections, colorScheme)
-                                "history" -> HistoryScreen(colorScheme)
-                                "stats" -> StatsScreen(colorScheme)
-                                "together" -> TogetherScreen(colorScheme)
-                                else -> HomeScreen(colorScheme)
                             }
                         }
-                        
+
+                        // Topbar overlaid over content area only (not sidebar)
                         androidx.compose.animation.AnimatedVisibility(
                             visible = AppState.isExpanded,
                             enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(600, easing = EaseOutQuart)) + fadeIn(),
@@ -486,6 +490,18 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                 ExpandedPlayerView()
                             }
                         }
+
+                        // Always rendered last = always on top of everything including expanded player
+                        CustomTitleBar(
+                            title = currentTitle,
+                            colorScheme = colorScheme,
+                            backgroundAlpha = topBarAlpha,
+                            searchText = searchText,
+                            onSearchChange = { searchText = it },
+                            onClose = onClose,
+                            onMinimize = onMinimize,
+                            onMaximize = onMaximize
+                        )
                     }
                 }
                 

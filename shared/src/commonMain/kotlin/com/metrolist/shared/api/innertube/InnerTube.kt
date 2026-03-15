@@ -179,6 +179,20 @@ class InnerTube(val httpClient: HttpClient) {
         )
     }
 
+    suspend fun subscribeChannel(
+        client: YouTubeClient,
+        channelId: String,
+        subscribe: Boolean,
+    ) = httpClient.post(if (subscribe) "subscription/subscribe" else "subscription/unsubscribe") {
+        ytClient(client, setLogin = true)
+        setBody(
+            SubscribeBody(
+                context = client.toContext(locale, visitorData, dataSyncId),
+                channelIds = listOf(channelId)
+            )
+        )
+    }
+
     suspend fun accountMenu(client: YouTubeClient) = httpClient.post("account/account_menu") {
         ytClient(client, setLogin = true)
         setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))

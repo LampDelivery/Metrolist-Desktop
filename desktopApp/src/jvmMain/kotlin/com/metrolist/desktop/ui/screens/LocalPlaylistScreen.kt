@@ -56,7 +56,7 @@ private fun Top50Screen(colorScheme: ColorScheme) {
                 onClick = { if (songs.isNotEmpty()) AppState.playFromId(songs.first().songId) },
                 enabled = songs.isNotEmpty()
             ) {
-                Icon(Icons.Default.PlayArrow, null, Modifier.size(18.dp))
+                Icon(Icons.Outlined.PlayArrow, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Play")
             }

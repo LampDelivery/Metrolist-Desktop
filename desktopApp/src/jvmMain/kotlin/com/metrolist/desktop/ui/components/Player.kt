@@ -244,7 +244,7 @@ fun ExpandedPlayerView() {
         }
         
         if (isNarrow) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(top = 48.dp)) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     val artSize = (width * 0.7f).coerceIn(200.dp, 400.dp)
                     AsyncImage(
@@ -263,7 +263,7 @@ fun ExpandedPlayerView() {
                 }
             }
         } else {
-            Row(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize().padding(top = 48.dp)) {
                 Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                     val artSize = (width * 0.35f).coerceIn(300.dp, 480.dp)
                     AsyncImage(

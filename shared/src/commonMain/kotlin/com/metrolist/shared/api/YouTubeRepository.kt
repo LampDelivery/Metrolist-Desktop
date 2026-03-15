@@ -180,6 +180,15 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             
             val subscribers = h?.get("subscriptionButton")?.jsonObject?.get("subscribeButtonRenderer")?.jsonObject?.get("subscriberCountText")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("subscriptionButton")?.jsonObject?.get("subscribeButtonRenderer")?.jsonObject?.get("longSubscriberCountText")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
+
+            val isSubscribed = h?.get("subscriptionButton")?.jsonObject
+                ?.get("subscribeButtonRenderer")?.jsonObject
+                ?.get("subscribed")?.jsonPrimitive?.booleanOrNull ?: false
+
+            val description = h?.get("description")?.jsonObject
+                ?.get("runs")?.jsonArray
+                ?.joinToString("") { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: "" }
+                ?.takeIf { it.isNotBlank() }
             
             val title = h?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
                 ?: h?.get("title")?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
@@ -195,7 +204,9 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 title = title,
                 thumbnail = artistThumbnail,
                 subscribers = subscribers,
-                banner = banner
+                banner = banner,
+                description = description,
+                isSubscribed = isSubscribed
             )
 
             // Propagate artist icon to ArtistTiny.thumbnail for all artists in all sections
@@ -634,6 +645,27 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             parseRadioResponse(response)
         } catch (_: Exception) {
             emptyList()
+        }
+    }
+
+    suspend fun startArtistRadio(channelId: String): List<SongItem> {
+        return try {
+            val response = innerTube.next(
+                YouTubeClient.WEB_REMIX,
+                playlistId = "RDAMCH$channelId"
+            ).body<JsonObject>()
+            parseRadioResponse(response)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun subscribeChannel(channelId: String, subscribe: Boolean): Boolean {
+        return try {
+            innerTube.subscribeChannel(YouTubeClient.WEB_REMIX, channelId, subscribe)
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 
