@@ -1,6 +1,17 @@
 package com.metrolist.shared.api
 
-import com.metrolist.shared.model.*
+import com.metrolist.shared.model.YTItem
+import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.ArtistItem
+import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.model.PodcastItem
+import com.metrolist.shared.model.EpisodeItem
+import com.metrolist.shared.model.ArtistTiny
+import com.metrolist.shared.model.AlbumPage
+import com.metrolist.shared.model.HomePageData
+import com.metrolist.shared.model.Chip
+import com.metrolist.shared.model.HomeSection
 import kotlinx.serialization.json.*
 
 object YouTubeMusicParser {
@@ -91,8 +102,9 @@ object YouTubeMusicParser {
                         val text = run.jsonObject["text"]?.jsonPrimitive?.content
                         val aBrowseId = run.jsonObject["navigationEndpoint"]?.jsonObject
                             ?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.content
+                        val thumb = run.jsonObject["thumbnail"]?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.content
                         if (text != null && text != " & " && text != ", " && text != " • ") {
-                            artists.add(ArtistTiny(aBrowseId, text))
+                            artists.add(ArtistTiny(aBrowseId, text, thumb))
                         }
                     }
                     SongItem(videoId, title, thumbnail, artists, null)

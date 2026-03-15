@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.constants.SliderStyle
+import com.metrolist.shared.model.LyricsProvider
 
 @Composable
 fun SettingsScreen(colorScheme: ColorScheme) {
@@ -31,12 +32,12 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 onCheckedChange = { AppState.togglePureBlack(it) },
                 colorScheme = colorScheme
             )
-            
+
             SettingsToggle(
-                title = "Floating Player",
-                subtitle = "Makes the player bar a floating pill shape",
-                checked = AppState.isFloatingPlayer,
-                onCheckedChange = { AppState.updateFloatingPlayerMode(it) },
+                title = "Miniplayer Night Mode",
+                subtitle = "Uses night mode for the miniplayer",
+                checked = AppState.miniplayerNightMode,
+                onCheckedChange = { AppState.toggleMiniplayerNightMode(it) },
                 colorScheme = colorScheme
             )
 
@@ -45,14 +46,6 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 subtitle = "Apple Music-style flowing background in expanded mode",
                 checked = AppState.animatedGradient,
                 onCheckedChange = { AppState.toggleAnimatedGradient(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggle(
-                title = "Night floating player",
-                subtitle = "Uses absolute black for the bottom player bar",
-                checked = AppState.pureBlackMiniPlayer,
-                onCheckedChange = { AppState.togglePureBlackMiniPlayer(it) },
                 colorScheme = colorScheme
             )
             
@@ -77,6 +70,33 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                 onCheckedChange = { AppState.toggleSwapPlayerControls(it) },
                 colorScheme = colorScheme
             )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        SettingsGroup(title = "Lyrics", colorScheme = colorScheme) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Provider", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LyricsProvider.entries.forEach { provider ->
+                        FilterChip(
+                            selected = AppState.lyricsProviderPref == provider,
+                            onClick = { AppState.setLyricsProvider(provider) },
+                            label = {
+                                Text(
+                                    when (provider) {
+                                        LyricsProvider.AUTO -> "Auto"
+                                        LyricsProvider.LRCLIB -> "LrcLib"
+                                        LyricsProvider.LYRICSPLUS -> "LyricsPlus"
+                                        LyricsProvider.YOUTUBE -> "YouTube"
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }

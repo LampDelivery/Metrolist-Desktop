@@ -68,8 +68,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
      kotlinOptions {
          jvmTarget = "21"
          freeCompilerArgs += listOf(
-             "-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=1.9.24",
-             "-Xopt-in=kotlin.RequiresOptIn"
+             "-opt-in=kotlin.RequiresOptIn"
          )
      }
 }

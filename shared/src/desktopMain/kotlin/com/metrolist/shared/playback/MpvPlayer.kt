@@ -1,10 +1,14 @@
+@file:OptIn(InternalCoroutinesApi::class)
 @file:Suppress("FunctionName")
 package com.metrolist.shared.playback
 
 import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
@@ -72,6 +76,11 @@ class MpvPlayer {
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
 
+    private val _onEOF = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val onEOF = _onEOF.asSharedFlow()
+
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
     init {
         try {
             val lib = MpvLib.load()
@@ -80,11 +89,30 @@ class MpvPlayer {
                 handle?.let {
                     lib.mpv_set_property_string(it, "vo", "null")
                     lib.mpv_set_property_string(it, "ytdl", "no")
+                    lib.mpv_set_property_string(it, "keep-open", "no")
                     lib.mpv_initialize(it)
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+
+        // State Polling
+        scope.launch {
+            while (isActive) {
+                val idle = getPropertyString("idle-active") == "yes"
+                val paused = getPropertyString("pause") == "yes"
+                
+                val wasPlaying = _isPlaying.value
+                val currentlyPlaying = !idle && !paused
+                
+                if (wasPlaying && idle) {
+                    _onEOF.tryEmit(Unit)
+                }
+                
+                _isPlaying.value = currentlyPlaying
+                delay(500)
+            }
         }
     }
 
@@ -144,6 +172,7 @@ class MpvPlayer {
     fun getDuration(): Double = getPropertyString("duration")?.toDoubleOrNull() ?: 0.0
 
     fun release() {
+        scope.cancel()
         handle?.let {
             MpvLib.load()?.mpv_terminate_destroy(it)
             handle = null

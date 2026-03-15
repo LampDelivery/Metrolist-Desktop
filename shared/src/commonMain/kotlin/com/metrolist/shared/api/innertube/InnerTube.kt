@@ -138,6 +138,47 @@ class InnerTube(val httpClient: HttpClient) {
         }
     }
 
+    suspend fun getSearchSuggestions(
+        client: YouTubeClient,
+        query: String? = null,
+    ) = httpClient.post("search/get_search_suggestions") {
+        ytClient(client, setLogin = true)
+        setBody(
+            SearchBody(
+                context = client.toContext(locale, visitorData, dataSyncId),
+                query = query
+            )
+        )
+    }
+
+    suspend fun feedback(
+        client: YouTubeClient,
+        feedbackTokens: List<String>,
+    ) = httpClient.post("feedback") {
+        ytClient(client, setLogin = true)
+        setBody(
+            FeedbackBody(
+                context = client.toContext(locale, visitorData, dataSyncId),
+                feedbackTokens = feedbackTokens
+            )
+        )
+    }
+
+    suspend fun editPlaylist(
+        client: YouTubeClient,
+        playlistId: String,
+        videoId: String,
+    ) = httpClient.post("browse") {
+        ytClient(client, setLogin = true)
+        setBody(
+            EditPlaylistBody(
+                context = client.toContext(locale, visitorData, dataSyncId),
+                playlistId = "VL$playlistId",
+                actions = listOf(EditPlaylistBody.Action(addedVideoId = videoId, action = "ACTION_ADD_VIDEO"))
+            )
+        )
+    }
+
     suspend fun accountMenu(client: YouTubeClient) = httpClient.post("account/account_menu") {
         ytClient(client, setLogin = true)
         setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))

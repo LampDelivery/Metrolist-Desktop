@@ -28,7 +28,7 @@ import com.metrolist.desktop.ui.components.YTGridItem
 import com.metrolist.desktop.ui.components.YTListItem
 
 @Composable
-fun ArtistScreen(artistId: String, colorScheme: ColorScheme) {
+fun ArtistScreen(colorScheme: ColorScheme) {
     if (AppState.isArtistLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = colorScheme.primary)

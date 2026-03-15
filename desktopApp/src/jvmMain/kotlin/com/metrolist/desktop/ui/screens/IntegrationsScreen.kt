@@ -28,46 +28,209 @@ fun IntegrationsScreen(colorScheme: ColorScheme) {
     Column(modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())) {
         Text("Integrations", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(24.dp))
-        
-        SettingsGroup(title = "Discord Rich Presence", colorScheme = colorScheme) {
-            SettingsToggle(
-                title = "Enable Rich Presence",
-                subtitle = "Share your current music on Discord",
-                checked = AppState.discordRpcEnabled,
-                onCheckedChange = { AppState.toggleDiscordRpc(it) },
-                colorScheme = colorScheme
-            )
-            
-            if (AppState.discordRpcEnabled) {
-                SettingsToggle(
-                    title = "Show when paused",
-                    subtitle = "Keep your status visible even when music is not playing",
-                    checked = AppState.discordRpcShowIdle,
-                    onCheckedChange = { AppState.toggleDiscordRpcShowIdle(it) },
-                    colorScheme = colorScheme
-                )
 
-                SettingsToggle(
-                    title = "Show Details",
-                    subtitle = "Show song title as primary status",
-                    checked = AppState.discordRpcUseDetails,
-                    onCheckedChange = { AppState.toggleDiscordRpcUseDetails(it) },
-                    colorScheme = colorScheme
-                )
+        DiscordSection(colorScheme)
 
-                SettingsToggle(
-                    title = "Show Buttons",
-                    subtitle = "Show clickable buttons in your profile",
-                    checked = AppState.discordRpcShowButtons,
-                    onCheckedChange = { AppState.toggleDiscordRpcShowButtons(it) },
-                    colorScheme = colorScheme
-                )
-            }
-        }
-        
         Spacer(Modifier.height(24.dp))
 
         LastFmSection(colorScheme)
+    }
+}
+
+@Composable
+private fun DiscordSection(colorScheme: ColorScheme) {
+    SettingsGroup(title = "Discord Rich Presence", colorScheme = colorScheme) {
+        SettingsToggle(
+            title = "Enable Rich Presence",
+            subtitle = "Share your current music on Discord",
+            checked = AppState.discordRpcEnabled,
+            onCheckedChange = { AppState.toggleDiscordRpc(it) },
+            colorScheme = colorScheme
+        )
+
+        if (AppState.discordRpcEnabled) {
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // App ID
+            var appIdInput by remember { mutableStateOf(AppState.discordRpcAppId) }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text("App ID", style = MaterialTheme.typography.labelLarge, color = colorScheme.primary)
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = appIdInput,
+                        onValueChange = {
+                            appIdInput = it
+                            AppState.updateDiscordRpcAppId(it)
+                        },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Leave empty for default (Metrolist)") },
+                        singleLine = true
+                    )
+                    Button(onClick = { AppState.applyDiscordRpcAppId() }) {
+                        Text("Apply")
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Determines the activity name shown in Discord. Create your own app at discord.com/developers/applications.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Activity Type
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text("Activity Type", style = MaterialTheme.typography.labelLarge, color = colorScheme.primary)
+                Spacer(Modifier.height(8.dp))
+                val activityTypes = listOf(
+                    "LISTENING" to "Listening",
+                    "PLAYING" to "Playing",
+                    "WATCHING" to "Watching",
+                    "COMPETING" to "Competing"
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    activityTypes.forEach { (key, label) ->
+                        FilterChip(
+                            selected = AppState.discordRpcActivityType == key,
+                            onClick = { AppState.updateDiscordRpcActivityType(key) },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            SettingsToggle(
+                title = "Show when paused",
+                subtitle = "Keep your status visible even when music is not playing",
+                checked = AppState.discordRpcShowIdle,
+                onCheckedChange = { AppState.toggleDiscordRpcShowIdle(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggle(
+                title = "Show Details",
+                subtitle = "Show song title as primary status",
+                checked = AppState.discordRpcUseDetails,
+                onCheckedChange = { AppState.toggleDiscordRpcUseDetails(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggle(
+                title = "Show Buttons",
+                subtitle = "Show clickable buttons in your Discord profile",
+                checked = AppState.discordRpcShowButtons,
+                onCheckedChange = { AppState.toggleDiscordRpcShowButtons(it) },
+                colorScheme = colorScheme
+            )
+
+            if (AppState.discordRpcShowButtons) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                // Button 1
+                DiscordButtonConfig(
+                    number = 1,
+                    visible = AppState.discordRpcButton1Visible,
+                    onVisibleChange = { AppState.toggleDiscordRpcButton1Visible(it) },
+                    label = AppState.discordRpcButton1Text,
+                    onLabelChange = { AppState.updateDiscordRpcButton1Text(it) },
+                    url = AppState.discordRpcButton1Url,
+                    onUrlChange = { AppState.updateDiscordRpcButton1Url(it) },
+                    colorScheme = colorScheme
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Button 2
+                DiscordButtonConfig(
+                    number = 2,
+                    visible = AppState.discordRpcButton2Visible,
+                    onVisibleChange = { AppState.toggleDiscordRpcButton2Visible(it) },
+                    label = AppState.discordRpcButton2Text,
+                    onLabelChange = { AppState.updateDiscordRpcButton2Text(it) },
+                    url = AppState.discordRpcButton2Url,
+                    onUrlChange = { AppState.updateDiscordRpcButton2Url(it) },
+                    colorScheme = colorScheme
+                )
+
+                // Variables hint
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.secondaryContainer),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "Available variables:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "{song_name}  •  {artist_name}  •  {album_name}  •  {video_id}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiscordButtonConfig(
+    number: Int,
+    visible: Boolean,
+    onVisibleChange: (Boolean) -> Unit,
+    label: String,
+    onLabelChange: (String) -> Unit,
+    url: String,
+    onUrlChange: (String) -> Unit,
+    colorScheme: ColorScheme
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "Button $number",
+                style = MaterialTheme.typography.labelLarge,
+                color = colorScheme.primary
+            )
+            Switch(
+                checked = visible,
+                onCheckedChange = onVisibleChange
+            )
+        }
+
+        if (visible) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = label,
+                onValueChange = onLabelChange,
+                label = { Text("Label") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = url,
+                onValueChange = onUrlChange,
+                label = { Text("URL") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
     }
 }
 
@@ -97,7 +260,7 @@ fun LastFmSection(colorScheme: ColorScheme) {
                     color = colorScheme.onSurfaceVariant
                 )
             }
-            
+
             if (isLoggedIn) {
                 OutlinedButton(onClick = {
                     lastfmSession = ""
@@ -152,11 +315,11 @@ fun LastFmSection(colorScheme: ColorScheme) {
             Column(Modifier.padding(16.dp)) {
                 Text("Scrobble Sensitivity", style = MaterialTheme.typography.labelLarge, color = colorScheme.primary)
                 Spacer(Modifier.height(8.dp))
-                
+
                 Text("Percentage: ${(scrobbleDelayPercent * 100).roundToInt()}%", style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = scrobbleDelayPercent,
-                    onValueChange = { 
+                    onValueChange = {
                         scrobbleDelayPercent = it
                         AppState.prefs.putFloat("LASTFM_DELAY_PERCENT", it)
                     },
@@ -167,7 +330,7 @@ fun LastFmSection(colorScheme: ColorScheme) {
                 Text("Minimum Track Duration: ${scrobbleMinDuration}s", style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = scrobbleMinDuration.toFloat(),
-                    onValueChange = { 
+                    onValueChange = {
                         scrobbleMinDuration = it.toInt()
                         AppState.prefs.putInt("LASTFM_MIN_DURATION", it.toInt())
                     },
@@ -178,14 +341,14 @@ fun LastFmSection(colorScheme: ColorScheme) {
                 Text("Maximum Delay: ${scrobbleMaxDelay}s", style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = scrobbleMaxDelay.toFloat(),
-                    onValueChange = { 
+                    onValueChange = {
                         scrobbleMaxDelay = it.toInt()
                         AppState.prefs.putInt("LASTFM_MAX_DELAY", it.toInt())
                     },
                     valueRange = 30f..360f,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Button(
                     onClick = { AppState.prefs.flush() },
                     modifier = Modifier.align(Alignment.End),

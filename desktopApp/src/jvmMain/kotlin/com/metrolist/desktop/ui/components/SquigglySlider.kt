@@ -46,7 +46,6 @@ fun SquigglySlider(
     isPlaying: Boolean = true,
 ) {
     val primaryColor = colors.activeTrackColor
-    val inactiveColor = colors.inactiveTrackColor
 
     var isDragging by remember { mutableStateOf(false) }
     var dragPosition by remember { mutableFloatStateOf(value) }

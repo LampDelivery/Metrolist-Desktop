@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -98,6 +99,7 @@ fun WindowScope.CustomTitleBar(
                                     if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
                                         AppState.isExpanded = false
                                         AppState.addSearchQuery(searchText)
+                                        AppState.search(searchText)
                                         focusManager.clearFocus()
                                         false
                                     } else false
@@ -105,9 +107,10 @@ fun WindowScope.CustomTitleBar(
                             singleLine = true,
                             cursorBrush = SolidColor(colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { 
+                            keyboardActions = KeyboardActions(onSearch = {
                                 AppState.isExpanded = false
                                 AppState.addSearchQuery(searchText)
+                                AppState.search(searchText)
                                 focusManager.clearFocus()
                             }),
                             decorationBox = { innerTextField ->
@@ -139,10 +142,11 @@ fun WindowScope.CustomTitleBar(
                             AppState.searchHistory.forEach { query ->
                                 DropdownMenuItem(
                                     text = { Text(query, style = MaterialTheme.typography.bodyMedium) },
-                                    onClick = { 
+                                    onClick = {
                                         AppState.isExpanded = false
                                         onSearchChange(query)
                                         AppState.addSearchQuery(query)
+                                        AppState.search(query)
                                         focusManager.clearFocus()
                                     },
                                     leadingIcon = { Icon(Icons.Default.History, null, modifier = Modifier.size(18.dp)) },
@@ -161,9 +165,10 @@ fun WindowScope.CustomTitleBar(
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         var showAuthDialog by remember { mutableStateOf(false) }
-                        if (AppState.isSignedIn) {
-                            var expanded by remember { mutableStateOf(false) }
-                            Box {
+                        var expanded by remember { mutableStateOf(false) }
+
+                        Box {
+                            if (AppState.isSignedIn) {
                                 AsyncImage(
                                     url = AppState.profilePicUrl ?: "", 
                                     modifier = Modifier
@@ -172,12 +177,26 @@ fun WindowScope.CustomTitleBar(
                                         .clickable { expanded = true }, 
                                     shape = CircleShape
                                 )
-                                
-                                DropdownMenu(
-                                    expanded = expanded, 
-                                    onDismissRequest = { expanded = false },
-                                    modifier = Modifier.width(300.dp).background(colorScheme.surfaceContainerHigh)
+                            } else {
+                                IconButton(
+                                    onClick = { expanded = true },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
+                                    Icon(
+                                        Icons.Outlined.AccountCircle, 
+                                        null, 
+                                        tint = colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                            
+                            DropdownMenu(
+                                expanded = expanded, 
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.width(300.dp).background(colorScheme.surfaceContainerHigh)
+                            ) {
+                                if (AppState.isSignedIn) {
                                     Row(
                                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
@@ -207,31 +226,45 @@ fun WindowScope.CustomTitleBar(
                                             }
                                         }
                                     }
-                                    
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colorScheme.outlineVariant)
-                                    
+                                } else {
                                     DropdownMenuItem(
-                                        text = { Text("Settings") }, 
-                                        onClick = { 
+                                        text = { Text("Sign in") },
+                                        onClick = {
                                             expanded = false
-                                            AppState.showSettings = true
-                                            AppState.showSignIn = false
+                                            AppState.showSignIn = true
+                                            AppState.showSettings = false
                                             AppState.showIntegrations = false
                                             AppState.isExpanded = false
-                                        }, 
-                                        leadingIcon = { Icon(Icons.Outlined.Settings, null) }
+                                        },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Login, null) }
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text("Integrations") }, 
-                                        onClick = { 
-                                            expanded = false
-                                            AppState.showIntegrations = true
-                                            AppState.showSettings = false
-                                            AppState.showSignIn = false
-                                            AppState.isExpanded = false
-                                        }, 
-                                        leadingIcon = { Icon(Icons.Outlined.Extension, null) }
-                                    )
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colorScheme.outlineVariant)
+                                }
+                                
+                                DropdownMenuItem(
+                                    text = { Text("Settings") }, 
+                                    onClick = { 
+                                        expanded = false
+                                        AppState.showSettings = true
+                                        AppState.showSignIn = false
+                                        AppState.showIntegrations = false
+                                        AppState.isExpanded = false
+                                    }, 
+                                    leadingIcon = { Icon(Icons.Outlined.Settings, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Integrations") }, 
+                                    onClick = { 
+                                        expanded = false
+                                        AppState.showIntegrations = true
+                                        AppState.showSettings = false
+                                        AppState.showSignIn = false
+                                        AppState.isExpanded = false
+                                    }, 
+                                    leadingIcon = { Icon(Icons.Outlined.Extension, null) }
+                                )
+                                if (AppState.isSignedIn) {
                                     DropdownMenuItem(
                                         text = { Text("Authentication Data") },
                                         onClick = {
@@ -249,73 +282,65 @@ fun WindowScope.CustomTitleBar(
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) } 
                                     )
                                 }
-                                if (showAuthDialog) {
-                                    var cookieText by remember { mutableStateOf(AppState.prefs.get("COOKIES", "")) }
-                                    var visitorDataText by remember { mutableStateOf(AppState.prefs.get("VISITOR_DATA", "")) }
-                                    var dataSyncIdText by remember { mutableStateOf(AppState.prefs.get("DATASYNC_ID", "")) }
-                                    var errorText by remember { mutableStateOf("") }
-                                    AlertDialog(
-                                        onDismissRequest = { showAuthDialog = false },
-                                        title = { Text("Edit Authentication Data") },
-                                        text = {
-                                            Column {
-                                                OutlinedTextField(
-                                                    value = cookieText,
-                                                    onValueChange = { cookieText = it },
-                                                    label = { Text("Cookie (must contain SAPISID)") },
-                                                    singleLine = false,
-                                                    modifier = Modifier.fillMaxWidth().height(80.dp)
-                                                )
+                            }
+
+                            if (showAuthDialog) {
+                                var cookieText by remember { mutableStateOf(AppState.prefs.get("COOKIES", "")) }
+                                var visitorDataText by remember { mutableStateOf(AppState.prefs.get("VISITOR_DATA", "")) }
+                                var dataSyncIdText by remember { mutableStateOf(AppState.prefs.get("DATASYNC_ID", "")) }
+                                var errorText by remember { mutableStateOf("") }
+                                AlertDialog(
+                                    onDismissRequest = { showAuthDialog = false },
+                                    title = { Text("Edit Authentication Data") },
+                                    text = {
+                                        Column {
+                                            OutlinedTextField(
+                                                value = cookieText,
+                                                onValueChange = { cookieText = it },
+                                                label = { Text("Cookie (must contain SAPISID)") },
+                                                singleLine = false,
+                                                modifier = Modifier.fillMaxWidth().height(80.dp)
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            OutlinedTextField(
+                                                value = visitorDataText,
+                                                onValueChange = { visitorDataText = it },
+                                                label = { Text("Visitor Data") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            OutlinedTextField(
+                                                value = dataSyncIdText,
+                                                onValueChange = { dataSyncIdText = it },
+                                                label = { Text("DataSync ID") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            if (errorText.isNotEmpty()) {
                                                 Spacer(Modifier.height(8.dp))
-                                                OutlinedTextField(
-                                                    value = visitorDataText,
-                                                    onValueChange = { visitorDataText = it },
-                                                    label = { Text("Visitor Data") },
-                                                    singleLine = true,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                                Spacer(Modifier.height(8.dp))
-                                                OutlinedTextField(
-                                                    value = dataSyncIdText,
-                                                    onValueChange = { dataSyncIdText = it },
-                                                    label = { Text("DataSync ID") },
-                                                    singleLine = true,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                                if (errorText.isNotEmpty()) {
-                                                    Spacer(Modifier.height(8.dp))
-                                                    Text(errorText, color = MaterialTheme.colorScheme.error)
-                                                }
-                                            }
-                                        },
-                                        confirmButton = {
-                                            Button(onClick = {
-                                                if (!cookieText.contains("SAPISID")) {
-                                                    errorText = "Cookie must contain SAPISID."
-                                                    return@Button
-                                                }
-                                                AppState.updateAuth(cookieText, visitorDataText, dataSyncIdText)
-                                                showAuthDialog = false
-                                            }) {
-                                                Text("Save")
-                                            }
-                                        },
-                                        dismissButton = {
-                                            OutlinedButton(onClick = { showAuthDialog = false }) {
-                                                Text("Cancel")
+                                                Text(errorText, color = MaterialTheme.colorScheme.error)
                                             }
                                         }
-                                    )
-                                }
-                            }
-                        } else {
-                            Button(onClick = { 
-                                AppState.showSignIn = true; 
-                                AppState.showSettings = false; 
-                                AppState.showIntegrations = false;
-                                AppState.isExpanded = false
-                            }, shape = CircleShape, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)) {
-                                Text("Sign in", fontSize = 12.sp)
+                                    },
+                                    confirmButton = {
+                                        Button(onClick = {
+                                            if (!cookieText.contains("SAPISID")) {
+                                                errorText = "Cookie must contain SAPISID."
+                                                return@Button
+                                            }
+                                            AppState.updateAuth(cookieText, visitorDataText, dataSyncIdText)
+                                            showAuthDialog = false
+                                        }) {
+                                            Text("Save")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        OutlinedButton(onClick = { showAuthDialog = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
                             }
                         }
                         

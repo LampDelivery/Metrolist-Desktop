@@ -3,8 +3,11 @@ package com.metrolist.shared.playback
 
 import com.metrolist.shared.model.SongItem
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 actual class MusicPlayer actual constructor() {
@@ -22,6 +25,9 @@ actual class MusicPlayer actual constructor() {
 
     actual val isPlaying: StateFlow<Boolean> = mpvPlayer.isPlaying
 
+    private val _onEOF = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    actual val onEOF: SharedFlow<Unit> = _onEOF.asSharedFlow()
+
     init {
         // Position and Duration Polling
         scope.launch {
@@ -36,6 +42,12 @@ actual class MusicPlayer actual constructor() {
                 }
                 
                 delay(50) // Poll faster for smoother UI progress
+            }
+        }
+
+        scope.launch {
+            mpvPlayer.onEOF.collect {
+                _onEOF.emit(Unit)
             }
         }
     }

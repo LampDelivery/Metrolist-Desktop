@@ -4,11 +4,14 @@ package com.metrolist.desktop
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +26,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -77,9 +81,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
         
         var searchText by remember { mutableStateOf("") }
         var selectedNavIndex by remember { mutableIntStateOf(0) }
-        var searchTracks by remember { mutableStateOf<List<YTItem>>(emptyList()) }
         var isSidebarExpanded by remember { mutableStateOf(false) }
-        val scope = rememberCoroutineScope()
 
         val visibleItems = if (AppState.isEditingSidebar) AppState.sidebarNavItems else AppState.sidebarNavItems.filter { it.visible }
         val currentTitle = if (AppState.showIntegrations) "Integrations" else visibleItems.getOrNull(selectedNavIndex)?.label ?: "Metrolist"
@@ -99,14 +101,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         searchText = searchText,
                         onSearchChange = { 
                             searchText = it
-                            if (it.length > 2) {
-                                AppState.isExpanded = false // Collapse player on search
-                                scope.launch { 
-                                    try { 
-                                        searchTracks = GlobalYouTubeRepository.instance.search(it)
-                                    } catch (_: Exception) {} 
-                                }
-                            } 
                         },
                         onClose = onClose,
                         onMinimize = onMinimize,
@@ -209,6 +203,47 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                         }
                                     }
                                 }
+
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                                Text(
+                                    "Your Library",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
+                                )
+
+                                val editPlaylists = AppState.librarySections["Library"]
+                                    ?.filterIsInstance<PlaylistItem>() ?: emptyList()
+                                if (editPlaylists.isNotEmpty()) {
+                                    val playlistListState = rememberLazyListState()
+                                    val playlistReorderState = rememberReorderableLazyListState(playlistListState) { from, to ->
+                                        val current = AppState.librarySections["Library"]
+                                            ?.filterIsInstance<PlaylistItem>() ?: emptyList()
+                                        val ids = AppState.getOrderedPlaylists(current).map { it.id }.toMutableList()
+                                        val moved = ids.removeAt(from.index)
+                                        ids.add(to.index, moved)
+                                        AppState.savePlaylistOrder(ids)
+                                    }
+                                    LazyColumn(
+                                        state = playlistListState,
+                                        modifier = Modifier.weight(1f).fillMaxWidth()
+                                    ) {
+                                        items(AppState.getOrderedPlaylists(editPlaylists), key = { it.id }) { playlist ->
+                                            ReorderableItem(playlistReorderState, key = playlist.id) {
+                                                EditingPlaylistItem(
+                                                    playlist = playlist,
+                                                    isVisible = playlist.id !in AppState.hiddenPlaylistIds,
+                                                    onToggleVisibility = { AppState.togglePlaylistVisibility(playlist.id) },
+                                                    colorScheme = colorScheme,
+                                                    modifier = Modifier.draggableHandle()
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                }
                             } else {
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     visibleItems.forEachIndexed { idx, navItem ->
@@ -225,6 +260,8 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                                 AppState.selectedPlaylistId = null
                                                 AppState.selectedAlbumId = null
                                                 searchText = ""
+                                                AppState.searchSummaryPage = null
+                                                AppState.searchResultPage = null
                                                 focusManager.clearFocus()
                                             },
                                             icon = if (selectedNavIndex == idx && !AppState.showSettings && !AppState.showIntegrations) icons.second else icons.first,
@@ -237,40 +274,129 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             }
                             
                             if (isSidebarExpanded && !AppState.isEditingSidebar) {
-                                Spacer(Modifier.height(16.dp))
-                                
-                                Surface(
+                                Spacer(Modifier.height(8.dp))
+
+                                // Library display state
+                                var librarySortMode by remember { mutableStateOf("Recents") }
+                                var libraryViewMode by remember { mutableStateOf("List") }
+                                var showSortMenu by remember { mutableStateOf(false) }
+
+                                val rawPlaylists = AppState.librarySections["Library"]
+                                    ?.filterIsInstance<PlaylistItem>()
+                                    ?.filter { it.id !in AppState.hiddenPlaylistIds }
+                                    ?: emptyList()
+                                val sortedPlaylists = when (librarySortMode) {
+                                    "Alphabetical" -> rawPlaylists.sortedBy { it.title }
+                                    "Creator"      -> rawPlaylists.sortedBy { it.author ?: "" }
+                                    "Recently Added" -> rawPlaylists.reversed()
+                                    else           -> AppState.getOrderedPlaylists(rawPlaylists)
+                                }
+
+                                // Header: "Your Library" + sort chip + view toggle
+                                Row(
                                     modifier = Modifier
-                                        .padding(horizontal = 16.dp)
                                         .fillMaxWidth()
-                                        .height(48.dp)
-                                        .alpha(expansionProgress)
-                                        .clickable { 
-                                            focusManager.clearFocus()
-                                        },
-                                    color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(24.dp)
+                                        .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                                        .alpha(expansionProgress),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    Text(
+                                        "Your Library",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    // Sort chip
+                                    Box {
+                                        TextButton(
+                                            onClick = { showSortMenu = true },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text(
+                                                librarySortMode,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                            Icon(
+                                                Icons.Outlined.KeyboardArrowDown, null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showSortMenu,
+                                            onDismissRequest = { showSortMenu = false }
+                                        ) {
+                                            listOf("Recents", "Recently Added", "Alphabetical", "Creator").forEach { mode ->
+                                                DropdownMenuItem(
+                                                    text = { Text(mode, style = MaterialTheme.typography.bodySmall) },
+                                                    onClick = { librarySortMode = mode; showSortMenu = false },
+                                                    leadingIcon = if (librarySortMode == mode) {
+                                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                                    } else null
+                                                )
+                                            }
+                                        }
+                                    }
+                                    // View mode toggle
+                                    IconButton(
+                                        onClick = { libraryViewMode = if (libraryViewMode == "List") "Grid" else "List" },
+                                        modifier = Modifier.size(32.dp)
                                     ) {
-                                        Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp), tint = colorScheme.onSurface)
-                                        Spacer(Modifier.width(12.dp))
-                                        Text("New playlist", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface, maxLines = 1)
+                                        Icon(
+                                            if (libraryViewMode == "Grid") Icons.AutoMirrored.Outlined.FormatListBulleted else Icons.Outlined.GridView,
+                                            null,
+                                            modifier = Modifier.size(17.dp),
+                                            tint = colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
 
-                                Spacer(Modifier.height(8.dp))
-                                
-                                LazyColumn(modifier = Modifier.weight(1f).alpha(expansionProgress)) {
-                                    val playlistItems = AppState.librarySections["Library"]?.filterIsInstance<PlaylistItem>() ?: emptyList()
-                                    items(playlistItems) { playlist ->
-                                        SidebarPlaylistEntry(playlist, colorScheme, onClick = { focusManager.clearFocus() })
+                                // Playlist content
+                                if (libraryViewMode == "Grid") {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(2),
+                                        modifier = Modifier.weight(1f).alpha(expansionProgress).padding(horizontal = 6.dp),
+                                        contentPadding = PaddingValues(bottom = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        gridItems(sortedPlaylists) { playlist ->
+                                            SidebarPlaylistGridEntry(playlist, colorScheme) { focusManager.clearFocus() }
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(modifier = Modifier.weight(1f).alpha(expansionProgress)) {
+                                        items(sortedPlaylists) { playlist ->
+                                            SidebarPlaylistEntry(playlist, colorScheme, onClick = { focusManager.clearFocus() })
+                                        }
                                     }
                                 }
-                            } else {
-                                Spacer(Modifier.weight(1f))
+                            } else if (!AppState.isEditingSidebar) {
+                                // Collapsed sidebar: show playlist thumbnails in a vertical stack
+                                val rawPlaylists = AppState.getOrderedPlaylists(
+                                    AppState.librarySections["Library"]
+                                        ?.filterIsInstance<PlaylistItem>()
+                                        ?.filter { it.id !in AppState.hiddenPlaylistIds }
+                                        ?: emptyList()
+                                )
+                                if (rawPlaylists.isNotEmpty()) {
+                                    LazyColumn(
+                                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        contentPadding = PaddingValues(vertical = 4.dp)
+                                    ) {
+                                        items(rawPlaylists) { playlist ->
+                                            CollapsedPlaylistThumb(playlist, colorScheme) {
+                                                focusManager.clearFocus()
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Spacer(Modifier.weight(1f))
+                                }
                             }
                             
                             Spacer(Modifier.height(12.dp))
@@ -282,37 +408,63 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { focusManager.clearFocus() }) {
-                        Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
-                            if (AppState.showSignIn) {
-                                EmbeddedSignInView(
-                                    onAuthDataExtracted = { cookie, visitorData, dataSyncId -> 
-                                        AppState.updateAuth(cookie, visitorData, dataSyncId) 
-                                    },
+                        val pageKey = when {
+                            AppState.showSignIn -> "signIn"
+                            AppState.showSettings -> "settings"
+                            AppState.showIntegrations -> "integrations"
+                            AppState.selectedArtistId != null -> "artist"
+                            AppState.selectedPlaylistId != null -> "playlist"
+                            AppState.selectedAlbumId != null -> "album"
+                            searchText.isNotEmpty() || AppState.searchSummaryPage != null || AppState.searchResultPage != null -> "search"
+                            else -> visibleItems.getOrNull(selectedNavIndex)?.id ?: "home"
+                        }
+                        com.metrolist.desktop.ui.components.PageTransition(
+                            pageKey = pageKey
+                        ) { key ->
+                            when (key) {
+                                "signIn" -> EmbeddedSignInView(
+                                    onAuthDataExtracted = { cookie, visitorData, dataSyncId -> AppState.updateAuth(cookie, visitorData, dataSyncId) },
                                     modifier = Modifier.fillMaxSize()
                                 )
-                            }
-                            else if (AppState.showSettings) SettingsScreen(colorScheme)
-                            else if (AppState.showIntegrations) IntegrationsScreen(colorScheme)
-                            else if (AppState.selectedArtistId != null) {
-                                ArtistScreen(AppState.selectedArtistId!!, colorScheme)
-                            }
-                            else if (AppState.selectedPlaylistId != null) {
-                                PlaylistScreen(AppState.selectedPlaylistId!!, colorScheme)
-                            }
-                            else if (AppState.selectedAlbumId != null) {
-                                AlbumScreen(AppState.selectedAlbumId!!, colorScheme)
-                            }
-                            else if (searchText.isNotEmpty()) SearchResultsList(searchTracks, colorScheme)
-                            else {
-                                val currentNavItem = visibleItems.getOrNull(selectedNavIndex)
-                                when (currentNavItem?.id) {
-                                    "home" -> HomeScreen(AppState.homeSections, colorScheme)
-                                    "library" -> LibraryScreen(AppState.librarySections, colorScheme)
-                                    "history" -> HistoryScreen(colorScheme)
-                                    "stats" -> StatsScreen(colorScheme)
-                                    "together" -> TogetherScreen(colorScheme)
-                                    else -> HomeScreen(AppState.homeSections, colorScheme)
+                                "settings" -> SettingsScreen(colorScheme)
+                                "integrations" -> IntegrationsScreen(colorScheme)
+                                "artist" -> {
+                                    val artistId = AppState.selectedArtistId
+                                    if (artistId != null) {
+                                        ArtistScreen(colorScheme)
+                                    } else {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("No artist selected")
+                                        }
+                                    }
                                 }
+                                "playlist" -> {
+                                    val playlistId = AppState.selectedPlaylistId
+                                    if (playlistId != null) {
+                                        PlaylistScreen(colorScheme)
+                                    } else {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("No playlist selected")
+                                        }
+                                    }
+                                }
+                                "album" -> {
+                                    val albumId = AppState.selectedAlbumId
+                                    if (albumId != null) {
+                                        AlbumScreen(albumId, colorScheme)
+                                    } else {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("No album selected")
+                                        }
+                                    }
+                                }
+                                "search" -> SearchResultsList(colorScheme)
+                                "home" -> HomeScreen(colorScheme)
+                                "library" -> LibraryScreen(AppState.librarySections, colorScheme)
+                                "history" -> HistoryScreen(colorScheme)
+                                "stats" -> StatsScreen(colorScheme)
+                                "together" -> TogetherScreen(colorScheme)
+                                else -> HomeScreen(colorScheme)
                             }
                         }
                         
@@ -322,7 +474,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(600, easing = EaseInQuart)) + fadeOut()
                         ) {
                             Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
-                                ExpandedPlayerView(colorScheme)
+                                ExpandedPlayerView()
                             }
                         }
                     }
@@ -335,6 +487,8 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                 ) {
                     StandardBottomPlayer(colorScheme)
                 }
+
+                AddToPlaylistDialog()
             }
         }
     }
@@ -447,79 +601,230 @@ fun EditingSidebarNavItem(
 }
 
 @Composable
+fun EditingPlaylistItem(
+    playlist: PlaylistItem,
+    isVisible: Boolean,
+    onToggleVisibility: () -> Unit,
+    colorScheme: ColorScheme,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            url = playlist.thumbnail ?: "",
+            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(4.dp))
+        )
+        Text(
+            playlist.title,
+            modifier = Modifier.padding(start = 10.dp).weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isVisible) colorScheme.onSurface else colorScheme.onSurface.copy(alpha = 0.3f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Checkbox(
+            checked = isVisible,
+            onCheckedChange = { onToggleVisibility() },
+            colors = CheckboxDefaults.colors(checkedColor = colorScheme.primary)
+        )
+        Icon(
+            Icons.Default.DragIndicator,
+            null,
+            tint = colorScheme.onSurface.copy(alpha = 0.4f),
+            modifier = modifier.size(24.dp).padding(start = 4.dp)
+        )
+    }
+}
+
+@Composable
 fun SidebarPlaylistEntry(playlist: PlaylistItem, colorScheme: ColorScheme, onClick: () -> Unit = {}) {
     val isLikedMusic = playlist.title.contains("Liked", ignoreCase = true)
-    
-    Box(
+    val hoverIS = remember { MutableInteractionSource() }
+    val isHovered by hoverIS.collectIsHoveredAsState()
+    val hoverAlpha by animateFloatAsState(if (isHovered) 1f else 0f, label = "playlistHover")
+    val thumbShape = RoundedCornerShape(6.dp)
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isLikedMusic) colorScheme.surfaceVariant else Color.Transparent)
-            .clickable { 
-                AppState.isExpanded = false // Collapse player on playlist click
-                AppState.fetchPlaylistData(playlist.id) 
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isHovered) colorScheme.surfaceVariant.copy(alpha = 0.6f) else Color.Transparent)
+            .hoverable(hoverIS)
+            .clickable {
+                AppState.isExpanded = false
+                AppState.fetchPlaylistData(playlist.id, playlist.thumbnail)
                 onClick()
             }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    playlist.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isLikedMusic) FontWeight.Bold else FontWeight.Medium,
-                    color = colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isLikedMusic) {
-                        Icon(Icons.Default.PushPin, null, modifier = Modifier.size(12.dp).rotate(45f), tint = colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        if (isLikedMusic) "Auto playlist" else playlist.author ?: "Lamp",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+        // Thumbnail with hover play overlay
+        Box(modifier = Modifier.size(48.dp)) {
+            AsyncImage(
+                url = playlist.thumbnail ?: "",
+                modifier = Modifier.size(48.dp),
+                shape = thumbShape
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(hoverAlpha)
+                    .clip(thumbShape)
+                    .background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.PlayArrow, null,
+                        tint = colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
-            if (isLikedMusic) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                playlist.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isLikedMusic) FontWeight.Bold else FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isLikedMusic) {
+                    Icon(
+                        Icons.Default.PushPin, null,
+                        modifier = Modifier.size(11.dp).rotate(45f),
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(3.dp))
                 }
+                Text(
+                    text = "Playlist" + (playlist.author?.let { " • $it" } ?: ""),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
 }
 
 @Composable
-fun HistoryScreen(colorScheme: ColorScheme) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
-            Spacer(Modifier.height(16.dp))
-            Text("History - Coming Soon", color = colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
+fun SidebarPlaylistGridEntry(playlist: PlaylistItem, colorScheme: ColorScheme, onClick: () -> Unit = {}) {
+    val hoverIS = remember { MutableInteractionSource() }
+    val isHovered by hoverIS.collectIsHoveredAsState()
+    val hoverAlpha by animateFloatAsState(if (isHovered) 1f else 0f, label = "gridHover")
+    val thumbShape = RoundedCornerShape(8.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isHovered) colorScheme.surfaceVariant.copy(alpha = 0.6f) else Color.Transparent)
+            .hoverable(hoverIS)
+            .clickable {
+                AppState.isExpanded = false
+                AppState.fetchPlaylistData(playlist.id, playlist.thumbnail)
+                onClick()
+            }
+            .padding(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+            AsyncImage(
+                url = playlist.thumbnail ?: "",
+                modifier = Modifier.fillMaxSize(),
+                shape = thumbShape
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(hoverAlpha)
+                    .clip(thumbShape)
+                    .background(Color.Black.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(15.dp))
+                }
+            }
         }
+        Spacer(Modifier.height(5.dp))
+        Text(
+            playlist.title,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
-fun StatsScreen(colorScheme: ColorScheme) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(MetrolistStatsIcon, null, modifier = Modifier.size(64.dp), tint = colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
-            Spacer(Modifier.height(16.dp))
-            Text("Stats - Coming Soon", color = colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
+fun CollapsedPlaylistThumb(playlist: PlaylistItem, colorScheme: ColorScheme, onClick: () -> Unit = {}) {
+    val hoverIS = remember { MutableInteractionSource() }
+    val isHovered by hoverIS.collectIsHoveredAsState()
+    val hoverAlpha by animateFloatAsState(if (isHovered) 1f else 0f, label = "collapsedThumbHover")
+    val thumbShape = RoundedCornerShape(8.dp)
+
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+            .fillMaxWidth()
+            .hoverable(hoverIS)
+            .clickable {
+                AppState.isExpanded = false
+                AppState.fetchPlaylistData(playlist.id, playlist.thumbnail)
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(modifier = Modifier.size(48.dp)) {
+            AsyncImage(
+                url = playlist.thumbnail ?: "",
+                modifier = Modifier.fillMaxSize(),
+                shape = thumbShape
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(hoverAlpha)
+                    .clip(thumbShape)
+                    .background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(14.dp))
+                }
+            }
         }
     }
 }
@@ -678,13 +983,15 @@ fun main() {
                 onMinimize = { windowState.isMinimized = true },
                 onMaximize = {
                     windowState.placement = if (windowState.placement == WindowPlacement.Maximized) { 
-                        WindowPlacement.Floating 
+                        WindowPlacement.Floating
                     } else { 
                         WindowPlacement.Maximized 
                     }
                     AppState.isMaximized = windowState.placement == WindowPlacement.Maximized
                 }
             )
+
+            MiniplayerWindow()
         }
     }
 }

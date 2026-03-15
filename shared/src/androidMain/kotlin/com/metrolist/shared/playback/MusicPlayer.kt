@@ -1,8 +1,11 @@
 package com.metrolist.shared.playback
 
 import com.metrolist.shared.model.SongItem
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 actual class MusicPlayer actual constructor() {
@@ -18,10 +21,12 @@ actual class MusicPlayer actual constructor() {
     private val _duration = MutableStateFlow(0L)
     actual val duration: StateFlow<Long> = _duration.asStateFlow()
 
+    private val _onEOF = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    actual val onEOF: SharedFlow<Unit> = _onEOF.asSharedFlow()
+
     actual fun play(song: SongItem, url: String) {
         _currentSong.value = song
         _isPlaying.value = true
-        // TODO: Implement ExoPlayer logic
     }
 
     actual fun pause() {
@@ -42,11 +47,9 @@ actual class MusicPlayer actual constructor() {
     }
 
     actual fun setVolume(level: Int) {
-        // TODO: Implement volume logic
     }
 
     actual fun setQueue(songs: List<SongItem>, startPlaying: Boolean) {
-        // TODO: Implement queue logic
     }
 
     actual fun release() {

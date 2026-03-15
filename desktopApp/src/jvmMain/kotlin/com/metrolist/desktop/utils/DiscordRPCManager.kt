@@ -9,10 +9,11 @@ import com.metrolist.desktop.state.AppState
 import com.metrolist.shared.model.SongItem
 
 object DiscordRPCManager {
-    private const val CLIENT_ID = "1481169442346893362"
-    private val rpc = DiscordRpc()
+    private const val DEFAULT_CLIENT_ID = "1481169442346893362"
+    private var rpc = DiscordRpc()
     private var initialized = false
-    
+    private var currentClientId = ""
+
     private var lastSongId: String? = null
     private var lastIsPlaying: Boolean? = null
     private var lastUpdateMillis: Long = 0
@@ -27,17 +28,33 @@ object DiscordRPCManager {
     }
 
     fun init() {
-        if (initialized) return
+        val clientId = AppState.discordRpcAppId.ifBlank { DEFAULT_CLIENT_ID }
+        if (initialized && currentClientId == clientId) return
+        currentClientId = clientId
         try {
-            rpc.init(CLIENT_ID, handler, false)
+            rpc.init(clientId, handler, false)
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun update(song: SongItem?, isPlaying: Boolean, currentPositionMs: Long) {
+    fun reinit() {
+        initialized = false
+        currentClientId = ""
+        lastSongId = null
+        lastIsPlaying = null
+        lastUpdateMillis = 0
+        lastPositionSeconds = 0
+        lastDurationSeconds = 0
+        try {
+            rpc = DiscordRpc()
+        } catch (_: Exception) {}
+        init()
+    }
+
+    fun update(song: SongItem?, isPlaying: Boolean, currentPositionMs: Long, artistIconOverride: String? = null) {
         if (!initialized) init()
-        
+
         if (song == null || (!isPlaying && !AppState.discordRpcShowIdle)) {
             clear()
             return
@@ -45,21 +62,19 @@ object DiscordRPCManager {
 
         val now = System.currentTimeMillis()
         val currentPositionSeconds = currentPositionMs / 1000
-        
+
         val songDuration = song.duration
         val durationSeconds: Long = if (songDuration != null && songDuration > 0) {
-            songDuration 
+            songDuration
         } else {
             AppState.player.duration.value / 1000
         }
-        
-        // Logic from pear desktop
+
         val songChanged = song.id != lastSongId
         val playingChanged = isPlaying != lastIsPlaying
         val seeked = !songChanged && kotlin.math.abs(currentPositionSeconds - lastPositionSeconds) > 2
         val durationFetched = !songChanged && lastDurationSeconds == 0L && durationSeconds > 0L
-        
-        // updates (Discord limit is ~15s) unless state changed
+
         if (!songChanged && !playingChanged && !seeked && !durationFetched && (now - lastUpdateMillis < 15000)) {
             return
         }
@@ -73,14 +88,39 @@ object DiscordRPCManager {
         try {
             val albumName = song.album?.name
             val artistName = song.artists.joinToString { it.name }
-            val subtitle = if (albumName.isNullOrBlank()) artistName else "$artistName • $albumName"
+            val firstArtist = song.artists.firstOrNull()
+
+            val actType = when (AppState.discordRpcActivityType) {
+                "PLAYING" -> ActivityType.PLAYING
+                "WATCHING" -> ActivityType.WATCHING
+                "COMPETING" -> ActivityType.COMPETING
+                else -> ActivityType.LISTENING
+            }
 
             val builder = DiscordRichPresence.builder()
                 .details(song.title)
-                .state(subtitle)
+                .state(artistName)
                 .largeImageKey(song.thumbnail ?: "icon")
-                .largeImageText(albumName ?: song.title)
-                .activityType(ActivityType.LISTENING)
+                .largeImageText(albumName ?: artistName)
+                .activityType(actType)
+
+            // Show artist portrait as small image; no fallback to album art while playing
+            if (firstArtist != null) {
+                val artistIconUrl = artistIconOverride ?: firstArtist.thumbnail
+                if (isPlaying) {
+                    if (artistIconUrl != null) {
+                        builder.smallImageKey(artistIconUrl)
+                        builder.smallImageText(firstArtist.name)
+                    }
+                    // no small image when artist icon is unavailable during playback
+                } else {
+                    builder.smallImageKey(artistIconUrl ?: "pause")
+                    builder.smallImageText("⏸ ${firstArtist.name}")
+                }
+            } else if (!isPlaying) {
+                builder.smallImageKey("pause")
+                builder.smallImageText("Paused")
+            }
 
             if (isPlaying) {
                 val nowSeconds = now / 1000
@@ -88,14 +128,44 @@ object DiscordRPCManager {
                 if (durationSeconds > 0) {
                     builder.endTimestamp(nowSeconds - currentPositionSeconds + durationSeconds)
                 }
-            } else {
-                builder.smallImageKey("pause")
-                builder.smallImageText("Paused")
             }
-                
+
             if (AppState.discordRpcShowButtons) {
-                builder.button(DiscordRichPresence.RPCButton.of(AppState.discordRpcButton1Text, "https://music.youtube.com/watch?v=${song.id}"))
-                builder.button(DiscordRichPresence.RPCButton.of(AppState.discordRpcButton2Text, "https://github.com/MetrolistGroup/Metrolist"))
+                val buttons = mutableListOf<DiscordRichPresence.RPCButton>()
+
+                if (AppState.discordRpcButton1Visible) {
+                    val label = AppState.discordRpcButton1Text
+                        .replace("{song_name}", song.title)
+                        .replace("{artist_name}", artistName)
+                        .replace("{album_name}", albumName ?: "")
+                    val url = AppState.discordRpcButton1Url
+                        .replace("{video_id}", song.id)
+                        .replace("{song_name}", song.title)
+                        .replace("{artist_name}", artistName)
+                        .replace("{album_name}", albumName ?: "")
+                    if (url.isNotBlank()) {
+                        buttons.add(DiscordRichPresence.RPCButton.of(label, url))
+                    }
+                }
+
+                if (AppState.discordRpcButton2Visible) {
+                    val label = AppState.discordRpcButton2Text
+                        .replace("{song_name}", song.title)
+                        .replace("{artist_name}", artistName)
+                        .replace("{album_name}", albumName ?: "")
+                    val url = AppState.discordRpcButton2Url
+                        .replace("{video_id}", song.id)
+                        .replace("{song_name}", song.title)
+                        .replace("{artist_name}", artistName)
+                        .replace("{album_name}", albumName ?: "")
+                    if (url.isNotBlank()) {
+                        buttons.add(DiscordRichPresence.RPCButton.of(label, url))
+                    }
+                }
+
+                if (buttons.isNotEmpty()) {
+                    builder.buttons(buttons)
+                }
             }
 
             rpc.updatePresence(builder.build())

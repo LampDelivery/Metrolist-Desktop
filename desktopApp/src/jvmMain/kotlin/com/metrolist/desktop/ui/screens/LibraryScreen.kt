@@ -11,9 +11,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.*
@@ -92,7 +92,7 @@ fun LibraryScreen(sections: Map<String, List<YTItem>>, colorScheme: ColorScheme)
                     LibraryViewModeButton(
                         selected = viewMode == LibraryViewMode.LIST,
                         onClick = { viewMode = LibraryViewMode.LIST },
-                        icon = Icons.Default.List,
+                        icon = Icons.AutoMirrored.Filled.List,
                         colorScheme = colorScheme
                     )
                     LibraryViewModeButton(

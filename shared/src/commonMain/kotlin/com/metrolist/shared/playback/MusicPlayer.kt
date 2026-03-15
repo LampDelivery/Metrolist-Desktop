@@ -2,6 +2,7 @@
 package com.metrolist.shared.playback
 
 import com.metrolist.shared.model.SongItem
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 expect class MusicPlayer() {
@@ -18,4 +19,5 @@ expect class MusicPlayer() {
     val isPlaying: StateFlow<Boolean>
     val currentPosition: StateFlow<Long>
     val duration: StateFlow<Long>
+    val onEOF: SharedFlow<Unit>
 }

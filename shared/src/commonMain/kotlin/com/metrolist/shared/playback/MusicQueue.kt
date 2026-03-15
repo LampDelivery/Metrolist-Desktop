@@ -42,6 +42,22 @@ class MusicQueue {
         return if (idx in _items.value.indices) _items.value[idx] else null
     }
 
+    fun addToQueue(songs: List<SongItem>) {
+        _items.value = _items.value + songs
+        if (originalItems.isNotEmpty()) originalItems = originalItems + songs
+    }
+
+    fun addToQueue(song: SongItem) = addToQueue(listOf(song))
+
+    fun playNext(songs: List<SongItem>) {
+        val insertAt = (_currentIndex.value + 1).coerceAtLeast(0)
+        val current = _items.value.toMutableList()
+        current.addAll(insertAt, songs)
+        _items.value = current
+    }
+
+    fun playNext(song: SongItem) = playNext(listOf(song))
+
     fun toggleShuffle() {
         isShuffled = !isShuffled
         if (isShuffled) {
