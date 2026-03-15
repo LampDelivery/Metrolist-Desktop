@@ -43,7 +43,7 @@ def ensure_pillow():
     try:
         from PIL import Image  # noqa: F401
     except ImportError:
-        print("Installing Pillow…")
+        print("Installing Pillow...")
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "Pillow", "--quiet"],
             check=True,
@@ -100,7 +100,7 @@ def write_linux_png():
     img = make_icon(512)
     out = RESOURCES / "logo.png"
     img.save(str(out), "PNG")
-    print(f"  logo.png  → {out}")
+    print(f"  logo.png  -> {out}")
 
 
 def write_windows_ico():
@@ -112,7 +112,7 @@ def write_windows_ico():
         format="ICO",
         sizes=[(s, s) for s in ICO_SIZES],
     )
-    print(f"  logo.ico  → {out}")
+    print(f"  logo.ico  -> {out}")
 
 
 def write_macos_icns():
@@ -141,7 +141,7 @@ def write_macos_icns():
                 file=sys.stderr,
             )
             sys.exit(1)
-        print(f"  logo.icns → {out}")
+        print(f"  logo.icns -> {out}")
 
 
 # ── entry point ────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ def main():
     ensure_pillow()
 
     os_name = platform.system()
-    print(f"Generating installer icons (platform={os_name})…")
+    print(f"Generating installer icons (platform={os_name})...")
 
     # logo.png is used by the Linux packages and is also the Pillow fallback
     # source for ICO / ICNS generation, so always write it first.
