@@ -84,12 +84,32 @@ fun SettingsScreen(colorScheme: ColorScheme) {
 
         SettingsGroup(title = "Player", colorScheme = colorScheme) {
             SettingsToggle(
-                title = "Pure Black Miniplayer",
-                subtitle = "Uses absolute black for the miniplayer background",
-                checked = AppState.pureBlackMiniPlayer,
-                onCheckedChange = { AppState.togglePureBlackMiniPlayer(it) },
+                title = "Crossfade",
+                subtitle = "Smoothly fade between tracks at the end of each song",
+                checked = AppState.crossfadeEnabled,
+                onCheckedChange = { AppState.toggleCrossfade(it) },
                 colorScheme = colorScheme
             )
+
+            if (AppState.crossfadeEnabled) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Crossfade duration", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text("${AppState.crossfadeDuration.toInt()} s", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+                    }
+                    Slider(
+                        value = AppState.crossfadeDuration,
+                        onValueChange = { AppState.updateCrossfadeDuration(it) },
+                        valueRange = 1f..15f,
+                        steps = 13,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
 
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Default tab on launch", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)

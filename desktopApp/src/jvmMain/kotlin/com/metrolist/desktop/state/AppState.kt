@@ -58,6 +58,11 @@ object AppState {
     var isPlaying by mutableStateOf(false)
     var progress by mutableStateOf(0f)
     var volume by mutableStateOf(prefs.getFloat("PLAYER_VOLUME", 0.7f))
+    var crossfadeEnabled by mutableStateOf(prefs.getBoolean("CROSSFADE_ENABLED", false))
+    var crossfadeDuration by mutableStateOf(prefs.getFloat("CROSSFADE_DURATION", 5f))
+    private var crossfadeOutJob: Job? = null
+    private var crossfadeInJob: Job? = null
+    private var crossfadeOutTriggered = false
     
     // Remember expanded state
     var isExpanded by mutableStateOf(prefs.getBoolean("PLAYER_EXPANDED", false))
@@ -251,8 +256,22 @@ object AppState {
         // Auto-play next song
         scope.launch {
             player.onEOF.collect {
-                skipNext()
+                skipNext(fromEOF = true)
             }
+        }
+
+        // Crossfade: detect when track is near end and trigger fade-out
+        scope.launch {
+            combine(player.currentPosition, player.duration) { pos, dur -> pos to dur }
+                .collectLatest { (pos, dur) ->
+                    if (!crossfadeEnabled || dur <= 0L) return@collectLatest
+                    val remaining = dur - pos
+                    val threshold = (crossfadeDuration * 1000f).toLong()
+                    if (remaining in 1L..threshold && !crossfadeOutTriggered) {
+                        crossfadeOutTriggered = true
+                        triggerCrossfadeOut(remaining)
+                    }
+                }
         }
         
         // Periodic Discord RPC update for when nothing is playing (keep Paused state alive)
@@ -469,13 +488,17 @@ object AppState {
     var selectedLocalPlaylist: String? by mutableStateOf(null)
 
     fun playTrack(track: SongItem, list: List<SongItem>? = null) {
+        crossfadeOutJob?.cancel()
+        crossfadeInJob?.cancel()
+        crossfadeOutTriggered = false
+        player.setVolume((volume * 100).toInt())
         scope.launch {
             if (list != null) {
                 queue.setQueue(list, list.indexOf(track).coerceAtLeast(0))
             } else {
                 queue.setQueue(listOf(track), 0)
             }
-            
+
             val url = GlobalYouTubeRepository.instance.getStreamUrl(track.id)
             if (url != null) {
                 player.play(track, url)
@@ -483,19 +506,29 @@ object AppState {
         }
     }
 
-    fun skipNext() {
+    fun skipNext(fromEOF: Boolean = false) {
         // Sleep timer: stop after current song ends
         if (sleepTimerStopAfterCurrentSong) {
             player.pause()
             clearSleepTimer()
             return
         }
+        // On manual skip, cancel crossfade and restore full volume immediately
+        if (!fromEOF) {
+            crossfadeOutJob?.cancel()
+            crossfadeInJob?.cancel()
+            crossfadeOutTriggered = false
+            player.setVolume((volume * 100).toInt())
+        }
         scope.launch {
+            crossfadeOutTriggered = false // reset for incoming track
             val next = queue.getNext()
             if (next != null) {
                 val url = GlobalYouTubeRepository.instance.getStreamUrl(next.id)
                 if (url != null) {
+                    if (crossfadeEnabled && fromEOF) player.setVolume(0)
                     player.play(next, url)
+                    if (crossfadeEnabled && fromEOF) triggerCrossfadeIn()
                 }
             } else if (repeatMode == RepeatMode.ALL && queue.items.value.isNotEmpty()) {
                 queue.setQueue(queue.items.value, 0)
@@ -503,7 +536,9 @@ object AppState {
                 if (first != null) {
                     val url = GlobalYouTubeRepository.instance.getStreamUrl(first.id)
                     if (url != null) {
+                        if (crossfadeEnabled && fromEOF) player.setVolume(0)
                         player.play(first, url)
+                        if (crossfadeEnabled && fromEOF) triggerCrossfadeIn()
                     }
                 }
             }
@@ -511,6 +546,10 @@ object AppState {
     }
 
     fun skipPrevious() {
+        crossfadeOutJob?.cancel()
+        crossfadeInJob?.cancel()
+        crossfadeOutTriggered = false
+        player.setVolume((volume * 100).toInt())
         scope.launch {
             val currentPos = player.currentPosition.value
             if (currentPos > 3000) {
@@ -684,6 +723,57 @@ object AppState {
         player.setVolume((level * 100).toInt())
         prefs.putFloat("PLAYER_VOLUME", level)
         try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleCrossfade(enabled: Boolean) {
+        crossfadeEnabled = enabled
+        prefs.putBoolean("CROSSFADE_ENABLED", enabled)
+        if (!enabled) {
+            crossfadeOutJob?.cancel()
+            crossfadeInJob?.cancel()
+            crossfadeOutTriggered = false
+            player.setVolume((volume * 100).toInt())
+        }
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateCrossfadeDuration(seconds: Float) {
+        crossfadeDuration = seconds
+        prefs.putFloat("CROSSFADE_DURATION", seconds)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    private fun triggerCrossfadeOut(remainingMs: Long) {
+        crossfadeOutJob?.cancel()
+        crossfadeOutJob = scope.launch {
+            val steps = 20
+            val startVolume = (volume * 100).toInt()
+            val stepDelayMs = (remainingMs / steps).coerceAtLeast(50L)
+            for (i in 1..steps) {
+                val t = i.toFloat() / steps
+                val eased = 1f - t * t  // quadratic ease-out: slow start, fast end
+                player.setVolume((startVolume * eased).toInt().coerceAtLeast(0))
+                delay(stepDelayMs)
+            }
+            player.setVolume(0)
+        }
+    }
+
+    private fun triggerCrossfadeIn() {
+        crossfadeInJob?.cancel()
+        crossfadeInJob = scope.launch {
+            val steps = 20
+            val targetVolume = (volume * 100).toInt()
+            val stepDelayMs = (crossfadeDuration * 1000f / steps).toLong().coerceAtLeast(50L)
+            player.setVolume(0)
+            for (i in 1..steps) {
+                val t = i.toFloat() / steps
+                val eased = t * t  // quadratic ease-in: fast start, slow end
+                player.setVolume((targetVolume * eased).toInt())
+                delay(stepDelayMs)
+            }
+            player.setVolume(targetVolume)
+        }
     }
 
     fun updateFloatingPlayerMode(enabled: Boolean) {
