@@ -96,9 +96,15 @@ jobs:
             # without FUSE by extracting to a temp dir instead of mounting.
             export APPIMAGE_EXTRACT_AND_RUN=1
             # Build all three Linux formats in one Gradle invocation
-            ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packageAppImage
+            ./gradlew \
+              -PLASTFM_API_KEY="$LASTFM_API_KEY" \
+              -PLASTFM_SECRET="$LASTFM_SECRET" \
+              :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packageAppImage
           else
-            ./gradlew :desktopApp:packageDistributionForCurrentOS
+            ./gradlew \
+              -PLASTFM_API_KEY="$LASTFM_API_KEY" \
+              -PLASTFM_SECRET="$LASTFM_SECRET" \
+              :desktopApp:packageDistributionForCurrentOS
           fi
 
       # ── Artifact upload (split by OS for clean download names) ────────────────

@@ -79,14 +79,17 @@ val generateConfig by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/source/config/main/kotlin").get().asFile
     outputs.dir(outputDir)
     doLast {
-        // 1. Try local.properties
-        // 2. Try System Environment (for GitHub Actions)
-        // 3. Default to empty
-        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") 
-            ?: System.getenv("LASTFM_API_KEY") 
+        // 1. Gradle -P property (passed explicitly from CI command line — most reliable)
+        // 2. local.properties (local dev)
+        // 3. System environment variable (fallback)
+        // 4. Empty (Last.fm disabled)
+        val lastFmKey = (project.findProperty("LASTFM_API_KEY") as? String)?.takeIf { it.isNotEmpty() }
+            ?: localProperties.getProperty("LASTFM_API_KEY")
+            ?: System.getenv("LASTFM_API_KEY")?.takeIf { it.isNotEmpty() }
             ?: ""
-        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") 
-            ?: System.getenv("LASTFM_SECRET") 
+        val lastFmSecret = (project.findProperty("LASTFM_SECRET") as? String)?.takeIf { it.isNotEmpty() }
+            ?: localProperties.getProperty("LASTFM_SECRET")
+            ?: System.getenv("LASTFM_SECRET")?.takeIf { it.isNotEmpty() }
             ?: ""
         
         if (lastFmKey.isEmpty()) {
