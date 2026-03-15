@@ -284,7 +284,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                                 onClick = onClick,
                                                 icon = { Icon(if (selected) icons.second else icons.first, navItem.label) },
                                                 label = { Text(navItem.label) },
-                                                shape = RoundedCornerShape(12.dp),
                                                 colors = NavigationDrawerItemDefaults.colors(
                                                     unselectedContainerColor = Color.Transparent
                                                 ),
@@ -305,7 +304,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                                 Box(
                                                     modifier = Modifier
                                                         .size(52.dp)
-                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .clip(CircleShape)
                                                         .background(if (selected) colorScheme.secondaryContainer else Color.Transparent),
                                                     contentAlignment = Alignment.Center
                                                 ) {
