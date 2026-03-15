@@ -128,28 +128,30 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Subscribe toggle button (matching Android style)
-                            OutlinedButton(
-                                onClick = { AppState.toggleArtistSubscription() },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (isSubscribed)
-                                        colorScheme.primaryContainer.copy(alpha = 0.85f)
-                                    else
-                                        Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(50),
-                                modifier = Modifier.height(40.dp)
-                            ) {
-                                Icon(
-                                    if (isSubscribed) Icons.Outlined.NotificationsNone else Icons.Outlined.AddAlert,
-                                    null,
-                                    modifier = Modifier.size(17.dp),
-                                    tint = if (isSubscribed) colorScheme.onPrimaryContainer else colorScheme.primary
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = if (isSubscribed) "Subscribed" else "Subscribe",
-                                    color = if (isSubscribed) colorScheme.onPrimaryContainer else colorScheme.primary
-                                )
+                            if (AppState.isSignedIn) {
+                                OutlinedButton(
+                                    onClick = { AppState.toggleArtistSubscription() },
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = if (isSubscribed)
+                                            colorScheme.primaryContainer.copy(alpha = 0.85f)
+                                        else
+                                            Color.Transparent
+                                    ),
+                                    shape = RoundedCornerShape(50),
+                                    modifier = Modifier.height(40.dp)
+                                ) {
+                                    Icon(
+                                        if (isSubscribed) Icons.Outlined.NotificationsNone else Icons.Outlined.AddAlert,
+                                        null,
+                                        modifier = Modifier.size(17.dp),
+                                        tint = if (isSubscribed) colorScheme.onPrimaryContainer else colorScheme.primary
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isSubscribed) "Subscribed" else "Subscribe",
+                                        color = if (isSubscribed) colorScheme.onPrimaryContainer else colorScheme.primary
+                                    )
+                                }
                             }
 
                             // Radio button

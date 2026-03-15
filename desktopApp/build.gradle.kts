@@ -151,6 +151,14 @@ compose.desktop {
             description = "Metrolist Music Player"
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"
+
+            // JavaFX requires access to internals that are restricted by the module system
+            jvmArgs += listOf(
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+                "--add-opens=java.desktop/sun.swing=ALL-UNNAMED"
+            )
             
             appResourcesRootDir.set(syncExternalResources.map { project.layout.projectDirectory.dir(it.destinationDir.absolutePath) })
 

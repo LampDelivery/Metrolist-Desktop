@@ -23,11 +23,11 @@ fun EmbeddedSignInView(
     SwingPanel(
         modifier = modifier,
         factory = {
-            if (CookieHandler.getDefault() == null) {
-                val manager = CookieManager()
-                manager.setCookiePolicy(java.net.CookiePolicy.ACCEPT_ALL)
-                CookieHandler.setDefault(manager)
-            }
+            // Always install a fresh CookieManager before JavaFX starts so that
+            // WebEngine requests go through our store (captures HttpOnly cookies too).
+            val cookieManager = CookieManager()
+            cookieManager.setCookiePolicy(java.net.CookiePolicy.ACCEPT_ALL)
+            CookieHandler.setDefault(cookieManager)
 
             val jfxPanel = JFXPanel()
             val container = JPanel().apply {
@@ -53,8 +53,8 @@ fun EmbeddedSignInView(
                                 val dataSyncId = engine.executeScript("window.yt.config_.DATASYNC_ID") as? String
 
                                 val uri = URI.create("https://music.youtube.com/")
-                                val cookiesMap = CookieHandler.getDefault()?.get(uri, emptyMap())
-                                val cookieStr = cookiesMap?.get("Cookie")?.joinToString("; ")
+                                val cookiesMap = cookieManager.get(uri, emptyMap())
+                                val cookieStr = cookiesMap["Cookie"]?.joinToString("; ")
                                     ?: engine.executeScript("document.cookie") as? String
 
                                 if (!cookieStr.isNullOrBlank() && !visitorData.isNullOrBlank() && !dataSyncId.isNullOrBlank()) {

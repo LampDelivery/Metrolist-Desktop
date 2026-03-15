@@ -136,7 +136,10 @@ fun LibraryScreen(sections: Map<String, List<YTItem>>, colorScheme: ColorScheme)
                     }
                     // Library items
                     if (sections.isEmpty()) {
-                        item { LibraryLoadingItem(colorScheme) }
+                        item {
+                            if (AppState.isSignedIn) LibraryLoadingItem(colorScheme)
+                            else LibrarySignInItem(colorScheme)
+                        }
                     } else if (filteredItems.isEmpty() && filterQuery.isNotEmpty()) {
                         item {
                             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -165,7 +168,8 @@ fun LibraryScreen(sections: Map<String, List<YTItem>>, colorScheme: ColorScheme)
                     // Library items
                     if (sections.isEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            LibraryLoadingItem(colorScheme)
+                            if (AppState.isSignedIn) LibraryLoadingItem(colorScheme)
+                            else LibrarySignInItem(colorScheme)
                         }
                     } else if (filteredItems.isEmpty() && filterQuery.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -278,6 +282,26 @@ private fun LibraryLoadingItem(colorScheme: ColorScheme) {
             CircularProgressIndicator(color = colorScheme.primary)
             Spacer(Modifier.height(16.dp))
             Text("Syncing your library...", color = colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun LibrarySignInItem(colorScheme: ColorScheme) {
+    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Outlined.AccountCircle,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Sign in to see your library", color = colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { AppState.showSignIn = true }) {
+                Text("Sign in")
+            }
         }
     }
 }
