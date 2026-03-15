@@ -42,7 +42,8 @@ jobs:
           sudo apt-get install -y \
             libmpv-dev \
             libfuse2 \
-            rpm
+            rpm \
+            zstd
           # Load FUSE kernel module — required by appimagetool for AppImage packaging
           sudo modprobe fuse || true
           mkdir -p external
@@ -79,9 +80,9 @@ jobs:
       - name: Generate installer icons
         shell: bash
         run: |
-          python3 -m pip install --quiet Pillow
+          python3 -m pip install --quiet Pillow --break-system-packages
           # cairosvg gives higher-quality SVG rendering; optional — script falls back to logo.png
-          python3 -m pip install --quiet cairosvg 2>/dev/null || true
+          python3 -m pip install --quiet cairosvg --break-system-packages 2>/dev/null || true
           python3 scripts/gen_icons.py
 
       - name: Build and package desktop app
@@ -91,6 +92,9 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
+            # APPIMAGE_EXTRACT_AND_RUN=1 lets appimagetool (itself an AppImage) run
+            # without FUSE by extracting to a temp dir instead of mounting.
+            export APPIMAGE_EXTRACT_AND_RUN=1
             # Build all three Linux formats in one Gradle invocation
             ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:packageAppImage
           else
@@ -98,6 +102,30 @@ jobs:
           fi
 
       # ── Artifact upload (split by OS for clean download names) ────────────────
+
+      - name: Create Arch Linux package (.pkg.tar.zst)
+        if: runner.os == 'Linux'
+        run: |
+          DEB=$(ls desktopApp/build/compose/binaries/main/deb/*.deb | head -1)
+          NAME=$(dpkg-deb -f "$DEB" Package | tr '[:upper:]' '[:lower:]')
+          VERSION=$(dpkg-deb -f "$DEB" Version)
+          PKGVER="${VERSION}-1"
+
+          mkdir -p arch_staging
+          dpkg-deb -x "$DEB" arch_staging/
+
+          SIZE=$(du -sb arch_staging | awk '{print $1}')
+          {
+            echo "pkgname = ${NAME}"
+            echo "pkgver = ${PKGVER}"
+            echo "pkgdesc = Metrolist Music Player"
+            echo "arch = x86_64"
+            echo "builddate = $(date +%s)"
+            echo "size = ${SIZE}"
+          } > arch_staging/.PKGINFO
+
+          mkdir -p arch_out
+          tar -c -C arch_staging . | zstd -9 -o "arch_out/${NAME}-${PKGVER}-x86_64.pkg.tar.zst"
 
       - name: Upload artifacts (Windows)
         if: runner.os == 'Windows'
@@ -127,9 +155,16 @@ jobs:
           name: Metrolist-Linux-rpm
           path: desktopApp/build/compose/binaries/main/rpm/*.rpm
 
-      - name: Upload artifacts (Linux .AppImage — Arch / NixOS / generic)
+      - name: Upload artifacts (Linux .AppImage — NixOS / generic)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: Metrolist-Linux-AppImage
-          path: desktopApp/build/compose/binaries/main/app-image/*.AppImage
+          path: desktopApp/build/compose/binaries/main/app-image/**
+
+      - name: Upload artifacts (Linux .pkg.tar.zst — Arch / Manjaro)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metrolist-Linux-pkg-tar-zst
+          path: arch_out/*.pkg.tar.zst
