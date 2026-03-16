@@ -997,7 +997,7 @@ object AppState {
                         prefs.flush()
                     }
                 }
-
+                
                 val result = GlobalYouTubeRepository.instance.getHomePageData(params)
 
                 if (params == null) {
@@ -1044,9 +1044,16 @@ object AppState {
         selectedSearchFilter = null
         searchSummaryPage = null
         searchResultPage = null
+        
+        // Navigation Logic: ensure we leave detail pages when searching
         selectedArtistId = null
         selectedPlaylistId = null
         selectedAlbumId = null
+        showSettings = false
+        showSignIn = false
+        showIntegrations = false
+        selectedLocalPlaylist = null
+
         scope.launch {
             try {
                 searchSummaryPage = GlobalYouTubeRepository.instance.getSearchSummary(query)
