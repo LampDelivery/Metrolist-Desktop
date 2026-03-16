@@ -138,7 +138,6 @@ fun LibraryScreen(sections: Map<String, List<YTItem>>, colorScheme: ColorScheme)
                     if (sections.isEmpty()) {
                         item {
                             if (AppState.isSignedIn) LibraryLoadingItem(colorScheme)
-                            else LibrarySignInItem(colorScheme)
                         }
                     } else if (filteredItems.isEmpty() && filterQuery.isNotEmpty()) {
                         item {
@@ -167,9 +166,10 @@ fun LibraryScreen(sections: Map<String, List<YTItem>>, colorScheme: ColorScheme)
                     }
                     // Library items
                     if (sections.isEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            if (AppState.isSignedIn) LibraryLoadingItem(colorScheme)
-                            else LibrarySignInItem(colorScheme)
+                        if (AppState.isSignedIn) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                LibraryLoadingItem(colorScheme)
+                            }
                         }
                     } else if (filteredItems.isEmpty() && filterQuery.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {

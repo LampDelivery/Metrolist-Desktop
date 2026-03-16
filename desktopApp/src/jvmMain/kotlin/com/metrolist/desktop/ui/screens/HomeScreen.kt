@@ -139,11 +139,25 @@ private fun SongsGridSection(
     )
 
     LazyHorizontalGrid(
-        rows = GridCells.Fixed(4),
+        rows = GridCells.Fixed(
+            when {
+                songs.size <= 4 -> 1
+                songs.size <= 8 -> 2
+                songs.size <= 16 -> 4
+                else -> 5
+            }
+        ),
         state = gridState,
         modifier = Modifier
             .fillMaxWidth()
-            .height(268.dp),
+            .height(
+                when {
+                    songs.size <= 4 -> 68.dp
+                    songs.size <= 8 -> 140.dp
+                    songs.size <= 16 -> 276.dp
+                    else -> 344.dp
+                }
+            ),
         contentPadding = PaddingValues(horizontal = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)

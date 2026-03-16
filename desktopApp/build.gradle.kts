@@ -26,7 +26,7 @@ plugins {
 }
 
 group = "com.metrolist"
-version = "1.0.0"
+version = "1.0.1"
 
 java {
     toolchain {
@@ -99,7 +99,7 @@ val generateConfig by tasks.registering {
             object BuildConfig {
                 const val LASTFM_API_KEY = "${lastFmKey}"
                 const val LASTFM_SECRET = "${lastFmSecret}"
-                const val APP_VERSION = "1.0.0"
+                const val APP_VERSION = "1.0.1"
             }
         """.trimIndent())
     }
@@ -143,7 +143,7 @@ compose.desktop {
             }
             targetFormats(*formats)
             packageName = "Metrolist"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             description = "Metrolist Music Player"
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"

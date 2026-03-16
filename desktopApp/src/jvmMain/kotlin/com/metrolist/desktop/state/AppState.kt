@@ -30,6 +30,12 @@ import kotlinx.serialization.json.*
 import java.net.URI
 import java.util.prefs.Preferences
 
+enum class ThemeMode {
+    LIGHT,
+    DARK,
+    AUTO  // Follows system theme
+}
+
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
 
 object AppState {
@@ -61,6 +67,17 @@ object AppState {
     var showSignIn by mutableStateOf(false)
     var showIntegrations by mutableStateOf(false)
     var availableUpdate by mutableStateOf<String?>(null)
+
+    // Settings sub-screens
+    var showAppearanceSettings by mutableStateOf(false)
+    var showThemeSettings by mutableStateOf(false)
+    var showSliderStyleDialog by mutableStateOf(false)
+    var showPlayerSettings by mutableStateOf(false)
+    var showContentSettings by mutableStateOf(false)
+    var showAiSettings by mutableStateOf(false)
+    var showPrivacySettings by mutableStateOf(false)
+    var showStorageSettings by mutableStateOf(false)
+    var showAboutSettings by mutableStateOf(false)
     
     var selectedArtistId by mutableStateOf<String?>(null)
     var artistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
@@ -153,10 +170,25 @@ object AppState {
     var cachedArtistIcon by mutableStateOf<String?>(null)
     val artistIconCache = mutableMapOf<String, String>()
 
-    // Lyrics provider preference
-    var lyricsProviderPref by mutableStateOf(
-        try { LyricsProvider.valueOf(prefs.get("LYRICS_PROVIDER", LyricsProvider.AUTO.name)) }
-        catch (_: Exception) { LyricsProvider.AUTO }
+    // Lyrics provider preferences — ordered list with per-provider enable/disable (matches Android app default)
+    private val defaultLyricsOrder = listOf(
+        LyricsProvider.LRCLIB, LyricsProvider.BETTERLYRICS, LyricsProvider.SIMPMUSIC,
+        LyricsProvider.LYRICSPLUS, LyricsProvider.YOUTUBE
+    )
+    var lyricsProviderOrder by mutableStateOf(
+        prefs.get("LYRICS_PROVIDER_ORDER", null)
+            ?.split(",")
+            ?.mapNotNull { runCatching { LyricsProvider.valueOf(it.trim()) }.getOrNull() }
+            ?.filter { it != LyricsProvider.AUTO }
+            ?.takeIf { it.isNotEmpty() }
+            ?: defaultLyricsOrder
+    )
+    var lyricsEnabledProviders by mutableStateOf(
+        prefs.get("LYRICS_ENABLED_PROVIDERS", null)
+            ?.split(",")
+            ?.mapNotNull { runCatching { LyricsProvider.valueOf(it.trim()) }.getOrNull() }
+            ?.toSet()
+            ?: defaultLyricsOrder.toSet()
     )
 
     // Sleep timer
@@ -510,6 +542,34 @@ object AppState {
     var pureBlackMiniPlayer by mutableStateOf(prefs.getBoolean("PURE_BLACK_MINI_PLAYER", false))
     var autoNightMode by mutableStateOf(prefs.getBoolean("AUTO_NIGHT_MODE", false))
 
+    // Modern theme system (replaces pure black with proper dark/light/auto modes)
+    private var _themeMode by mutableStateOf(
+        when (prefs.get("THEME_MODE", "AUTO")) {
+            "LIGHT" -> ThemeMode.LIGHT
+            "DARK" -> ThemeMode.DARK
+            else -> ThemeMode.AUTO
+        }
+    )
+
+    var themeMode: ThemeMode
+        get() = _themeMode
+        set(value) {
+            _themeMode = value
+            prefs.put("THEME_MODE", value.name)
+            try { prefs.flush() } catch (_: Exception) {}
+        }
+    var dynamicTheme by mutableStateOf(prefs.getBoolean("DYNAMIC_THEME", true))
+    var selectedThemeColor by mutableStateOf(
+        prefs.getLong("SELECTED_THEME_COLOR", DefaultThemeColor.value.toLong())
+    )
+
+    // Appearance Settings
+    var enableHighRefreshRate by mutableStateOf(prefs.getBoolean("ENABLE_HIGH_REFRESH_RATE", true))
+    var newMiniPlayerDesign by mutableStateOf(prefs.getBoolean("NEW_MINI_PLAYER_DESIGN", true))
+    var newPlayerDesign by mutableStateOf(prefs.getBoolean("NEW_PLAYER_DESIGN", true))
+    var hidePlayerThumbnail by mutableStateOf(prefs.getBoolean("HIDE_PLAYER_THUMBNAIL", false))
+    var cropAlbumArt by mutableStateOf(prefs.getBoolean("CROP_ALBUM_ART", false))
+
     // Content Settings
     var hideExplicit by mutableStateOf(prefs.getBoolean("HIDE_EXPLICIT", false))
     var hideVideoSongs by mutableStateOf(prefs.getBoolean("HIDE_VIDEO_SONGS", false))
@@ -741,11 +801,17 @@ object AppState {
         }
     }
 
-    fun setLyricsProvider(provider: LyricsProvider) {
-        lyricsProviderPref = provider
-        prefs.put("LYRICS_PROVIDER", provider.name)
+    fun updateLyricsProviderOrder(order: List<LyricsProvider>) {
+        lyricsProviderOrder = order
+        prefs.put("LYRICS_PROVIDER_ORDER", order.joinToString(",") { it.name })
         try { prefs.flush() } catch (_: Exception) {}
-        // Re-fetch lyrics with new provider
+        currentTrack?.let { fetchLyrics(it) }
+    }
+
+    fun toggleLyricsProvider(provider: LyricsProvider, enabled: Boolean) {
+        lyricsEnabledProviders = if (enabled) lyricsEnabledProviders + provider else lyricsEnabledProviders - provider
+        prefs.put("LYRICS_ENABLED_PROVIDERS", lyricsEnabledProviders.joinToString(",") { it.name })
+        try { prefs.flush() } catch (_: Exception) {}
         currentTrack?.let { fetchLyrics(it) }
     }
 
@@ -881,6 +947,94 @@ object AppState {
         animatedGradient = enabled
         prefs.putBoolean("ANIMATED_GRADIENT", enabled)
         try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Modern theme system functions
+
+    fun toggleDynamicTheme(enabled: Boolean) {
+        dynamicTheme = enabled
+        prefs.putBoolean("DYNAMIC_THEME", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Appearance Settings Functions
+    fun toggleHighRefreshRate(enabled: Boolean) {
+        enableHighRefreshRate = enabled
+        prefs.putBoolean("ENABLE_HIGH_REFRESH_RATE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleNewMiniPlayerDesign(enabled: Boolean) {
+        newMiniPlayerDesign = enabled
+        prefs.putBoolean("NEW_MINI_PLAYER_DESIGN", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleNewPlayerDesign(enabled: Boolean) {
+        newPlayerDesign = enabled
+        prefs.putBoolean("NEW_PLAYER_DESIGN", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleHidePlayerThumbnail(enabled: Boolean) {
+        hidePlayerThumbnail = enabled
+        prefs.putBoolean("HIDE_PLAYER_THUMBNAIL", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleCropAlbumArt(enabled: Boolean) {
+        cropAlbumArt = enabled
+        prefs.putBoolean("CROP_ALBUM_ART", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun setSelectedThemeColor(color: ULong) {
+        selectedThemeColor = color.toLong()
+        prefs.putLong("SELECTED_THEME_COLOR", color.toLong())
+        try { prefs.flush() } catch (_: Exception) {}
+        if (!dynamicTheme) {
+            // Update seed color when not using dynamic theme
+            seedColor = androidx.compose.ui.graphics.Color(color)
+        }
+    }
+
+    fun getCurrentThemeIsDark(): Boolean {
+        return when (themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.AUTO -> {
+                // Check system dark mode (Windows registry or JavaFX preference)
+                try {
+                    val osName = System.getProperty("os.name").lowercase()
+                    when {
+                        osName.contains("windows") -> {
+                            // Check Windows registry for dark mode
+                            val process = ProcessBuilder("reg", "query",
+                                "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                                "/v", "AppsUseLightTheme").start()
+                            val output = process.inputStream.readBytes().toString(Charsets.UTF_8)
+                            process.waitFor()
+                            // AppsUseLightTheme: 0 = dark, 1 = light
+                            !output.contains("0x1")
+                        }
+                        osName.contains("mac") -> {
+                            // Check macOS system preference
+                            val process = ProcessBuilder("defaults", "read", "-g", "AppleInterfaceStyle").start()
+                            val output = process.inputStream.readBytes().toString(Charsets.UTF_8)
+                            process.waitFor()
+                            output.trim().lowercase() == "dark"
+                        }
+                        else -> {
+                            // Linux/other: fallback to current pure black setting
+                            pureBlack
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Fallback to current pure black setting if detection fails
+                    pureBlack
+                }
+            }
+        }
     }
 
     fun toggleHideExplicit(enabled: Boolean) {
@@ -1208,16 +1362,37 @@ object AppState {
         isLyricsLoading = true
         scope.launch {
             try {
-                val result = GlobalYouTubeRepository.instance.getLyrics(
-                    title = song.title,
-                    artist = song.artists.joinToString { it.name },
-                    duration = song.duration,
-                    album = song.album?.name,
-                    videoId = song.id,
-                    provider = lyricsProviderPref
-                )
-                currentLyrics = result.lyrics
-                currentLyricsProvider = if (result.lyrics != null) result.provider else null
+                val orderedEnabled = lyricsProviderOrder.filter { it in lyricsEnabledProviders }
+                var bestResult: com.metrolist.shared.api.LyricsWithProvider? = null
+                var fallbackResult: com.metrolist.shared.api.LyricsWithProvider? = null
+
+                for (provider in orderedEnabled) {
+                    val candidate = GlobalYouTubeRepository.instance.getLyrics(
+                        title = song.title,
+                        artist = song.artists.joinToString { it.name },
+                        duration = song.duration,
+                        album = song.album?.name,
+                        videoId = song.id,
+                        provider = provider
+                    )
+                    if (candidate.lyrics != null) {
+                        val parsed = com.metrolist.desktop.ui.components.parseLrc(candidate.lyrics!!)
+                        val hasWordSync = parsed.any { it.words != null }
+
+                        if (hasWordSync && bestResult == null) {
+                            // Prefer first provider with word-level timing
+                            bestResult = candidate
+                            break
+                        } else if (fallbackResult == null) {
+                            // Keep first provider with any lyrics as fallback
+                            fallbackResult = candidate
+                        }
+                    }
+                }
+
+                val result = bestResult ?: fallbackResult
+                currentLyrics = result?.lyrics
+                currentLyricsProvider = if (result?.lyrics != null) result.provider else null
             } catch (_: Exception) {
                 currentLyrics = "Lyrics not found"
             } finally {

@@ -13,7 +13,9 @@ data class WordTimestamp(
 data class LyricsEntry(
     val time: Long,
     val text: String,
-    val words: List<WordTimestamp>? = null
+    val words: List<WordTimestamp>? = null,
+    val agent: String? = null,
+    val isBackground: Boolean = false
 )
 
 data class LyricsWithProvider(

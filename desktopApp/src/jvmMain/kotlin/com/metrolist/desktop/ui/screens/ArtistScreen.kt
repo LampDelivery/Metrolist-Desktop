@@ -310,9 +310,9 @@ private fun ArtistSectionScreen(colorScheme: ColorScheme) {
     val loading = AppState.isArtistSectionLoading
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
+        // Header with top padding to avoid clipping below TopBar (48dp height)
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 60.dp, end = 16.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { AppState.clearArtistSection() }) {

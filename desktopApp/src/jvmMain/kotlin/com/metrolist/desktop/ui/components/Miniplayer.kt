@@ -50,7 +50,7 @@ fun MiniplayerWindow() {
     }
 
     val seedColor = AppState.seedColor
-    val isNightMode = AppState.miniplayerNightMode
+    val isNightMode = AppState.pureBlackMiniPlayer
 
     Window(
         onCloseRequest = { AppState.showMiniplayer = false },

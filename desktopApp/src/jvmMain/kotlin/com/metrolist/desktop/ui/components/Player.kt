@@ -636,8 +636,8 @@ fun MetrolistPlayPauseButton(
     )
 
     val width by animateDpAsState(if (isWide) 120.dp else 56.dp)
-    val height by animateDpAsState(if (isWide) 48.dp else 56.dp)
-    val shapeRadius by animateDpAsState(if (isWide) 24.dp else 28.dp)
+    val height = 48.dp
+    val shapeRadius = 24.dp
 
     Surface(
         modifier = modifier
@@ -1043,7 +1043,15 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
                             Box(modifier = Modifier.onPointerEvent(PointerEventType.Enter) { isVolumeHovered = true }.onPointerEvent(PointerEventType.Exit) { isVolumeHovered = false }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     AnimatedVisibility(visible = isVolumeHovered, enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End), exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)) {
-                                        MetrolistVolumeSlider(value = AppState.volume, onValueChange = { AppState.setVolumeLevel(it) }, modifier = Modifier.width(180.dp).padding(horizontal = 8.dp), accentColor = colorScheme.primary, showIconInside = false)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            MetrolistVolumeSlider(value = AppState.volume, onValueChange = { AppState.setVolumeLevel(it) }, modifier = Modifier.width(150.dp).padding(horizontal = 8.dp), accentColor = colorScheme.primary, showIconInside = false)
+                                            Text(
+                                                "${(AppState.volume * 100).roundToInt()}%",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colorScheme.primary,
+                                                modifier = Modifier.widthIn(min = 28.dp)
+                                            )
+                                        }
                                     }
                                     Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                                         Icon(if (AppState.volume > 0.66f) MetrolistVolumeUpIcon else if (AppState.volume > 0.33f) MetrolistVolumeDownIcon else if (AppState.volume > 0f) MetrolistVolumeMuteIcon else MetrolistVolumeOffIcon, null, modifier = Modifier.size(20.dp), tint = if (isVolumeHovered) colorScheme.primary else colorScheme.onSurfaceVariant)

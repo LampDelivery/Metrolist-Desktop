@@ -68,14 +68,16 @@ fun MetrolistTheme(
     pureBlack: Boolean = AppState.pureBlack,
     content: @Composable () -> Unit
 ) {
+    val isDark = AppState.getCurrentThemeIsDark()
+
     val baseColorScheme = rememberDynamicColorScheme(
         seedColor = seedColor,
-        isDark = true,
+        isDark = isDark,
         style = PaletteStyle.TonalSpot
     )
 
-    val colorScheme = remember(baseColorScheme, pureBlack) {
-        if (pureBlack) baseColorScheme.pureBlack() else baseColorScheme
+    val colorScheme = remember(baseColorScheme, pureBlack, isDark) {
+        if (pureBlack && isDark) baseColorScheme.pureBlack() else baseColorScheme
     }
 
     MaterialTheme(

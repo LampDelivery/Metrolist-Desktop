@@ -1,212 +1,136 @@
 package com.metrolist.desktop.ui.screens
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.constants.SliderStyle
-import com.metrolist.shared.model.LyricsProvider
+import com.metrolist.desktop.ui.components.ChipsRow
 
 @Composable
 fun SettingsScreen(colorScheme: ColorScheme) {
-    Column(modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(24.dp))
+    // Show sub-screens based on state
+    when {
+        AppState.showThemeSettings -> ThemeSettingsScreen(colorScheme)
+        AppState.showAppearanceSettings -> AppearanceSettingsScreen(colorScheme)
+        AppState.showPlayerSettings -> PlayerSettingsScreen(colorScheme)
+        AppState.showContentSettings -> ContentSettingsScreen(colorScheme)
+        AppState.showAiSettings -> AiSettingsScreen(colorScheme)
+        AppState.showPrivacySettings -> PrivacySettingsScreen(colorScheme)
+        AppState.showStorageSettings -> StorageSettingsScreen(colorScheme)
+        else -> {
+            // Main settings screen
+            val scrollState = rememberScrollState()
 
-        SettingsGroup(title = "Appearance", colorScheme = colorScheme) {
-            SettingsToggle(
-                title = "Night Mode",
-                subtitle = "Uses absolute black for backgrounds",
-                checked = AppState.pureBlack,
-                onCheckedChange = { AppState.togglePureBlack(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggle(
-                title = "Auto Night Mode",
-                subtitle = "Enables night mode automatically when album art is dark",
-                checked = AppState.autoNightMode,
-                onCheckedChange = { AppState.toggleAutoNightMode(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggle(
-                title = "Miniplayer Night Mode",
-                subtitle = "Uses night mode for the miniplayer",
-                checked = AppState.miniplayerNightMode,
-                onCheckedChange = { AppState.toggleMiniplayerNightMode(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggle(
-                title = "Animated Gradient",
-                subtitle = "Apple Music-style flowing background in expanded mode",
-                checked = AppState.animatedGradient,
-                onCheckedChange = { AppState.toggleAnimatedGradient(it) },
-                colorScheme = colorScheme
-            )
-
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Slider Style", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SliderStyle.entries.forEach { style ->
-                        FilterChip(
-                            selected = AppState.sliderStyleState == style,
-                            onClick = { AppState.setSliderStyle(style) },
-                            label = { Text(style.name.lowercase().replaceFirstChar { it.uppercase() }) }
-                        )
+            Column(
+                modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(scrollState)
+            ) {
+                // Back button and title row
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { AppState.showSettings = false }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
+                    Text("Settings",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 8.dp))
                 }
-            }
 
-            SettingsToggle(
-                title = "Swap player buttons and song info",
-                subtitle = "Places the player controls in the middle and song info on the left",
-                checked = AppState.swapPlayerControls,
-                onCheckedChange = { AppState.toggleSwapPlayerControls(it) },
-                colorScheme = colorScheme
-            )
-        }
+                // User Interface Section
+                SettingsGroup(title = "User Interface", colorScheme = colorScheme) {
+                    SettingsNavigationItem(
+                        title = "Appearance",
+                        subtitle = "Theme, colors, and visual preferences",
+                        icon = Icons.Outlined.Palette,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showAppearanceSettings = true }
+                    )
+                }
 
-        Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
-        SettingsGroup(title = "Player", colorScheme = colorScheme) {
-            SettingsToggle(
-                title = "Crossfade",
-                subtitle = "Smoothly fade between tracks at the end of each song",
-                checked = AppState.crossfadeEnabled,
-                onCheckedChange = { AppState.toggleCrossfade(it) },
-                colorScheme = colorScheme
-            )
+                // Player & Content Section
+                SettingsGroup(title = "Player & Content", colorScheme = colorScheme) {
+                    SettingsNavigationItem(
+                        title = "Player & Audio",
+                        subtitle = "Playback settings and audio preferences",
+                        icon = Icons.Outlined.PlayArrow,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showPlayerSettings = true }
+                    )
+                    SettingsNavigationItem(
+                        title = "Content & Filters",
+                        subtitle = "Content filtering and display options",
+                        icon = Icons.Outlined.Language,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showContentSettings = true }
+                    )
+                    SettingsNavigationItem(
+                        title = "AI & Translation",
+                        subtitle = "AI-powered lyrics translation settings",
+                        icon = Icons.Outlined.Translate,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showAiSettings = true }
+                    )
+                }
 
-            if (AppState.crossfadeEnabled) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Crossfade duration", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        Text("${AppState.crossfadeDuration.toInt()} s", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
-                    }
-                    Slider(
-                        value = AppState.crossfadeDuration,
-                        onValueChange = { AppState.updateCrossfadeDuration(it) },
-                        valueRange = 1f..15f,
-                        steps = 13,
-                        modifier = Modifier.fillMaxWidth()
+                Spacer(Modifier.height(8.dp))
+
+                // Privacy & Security Section
+                SettingsGroup(title = "Privacy & Security", colorScheme = colorScheme) {
+                    SettingsNavigationItem(
+                        title = "Privacy",
+                        subtitle = "History and data privacy controls",
+                        icon = Icons.Outlined.Security,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showPrivacySettings = true }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Storage & Data Section
+                SettingsGroup(title = "Storage & Data", colorScheme = colorScheme) {
+                    SettingsNavigationItem(
+                        title = "Storage",
+                        subtitle = "Cache management and storage settings",
+                        icon = Icons.Outlined.Storage,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showStorageSettings = true }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // System & About Section
+                SettingsGroup(title = "System & About", colorScheme = colorScheme) {
+                    SettingsNavigationItem(
+                        title = "About",
+                        subtitle = "App information and updates",
+                        icon = Icons.Outlined.Info,
+                        colorScheme = colorScheme,
+                        onClick = { AppState.showAboutSettings = true }
                     )
                 }
             }
-
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Default tab on launch", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("home" to "Home", "library" to "Library", "history" to "History", "stats" to "Stats").forEach { (id, label) ->
-                        FilterChip(
-                            selected = AppState.defaultOpenTab == id,
-                            onClick = { AppState.updateDefaultOpenTab(id) },
-                            label = { Text(label) }
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        SettingsGroup(title = "Content", colorScheme = colorScheme) {
-            SettingsToggle(
-                title = "Hide explicit content",
-                subtitle = "Filters songs marked as explicit from search and recommendations",
-                checked = AppState.hideExplicit,
-                onCheckedChange = { AppState.toggleHideExplicit(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggle(
-                title = "Hide video songs",
-                subtitle = "Hides songs that are music videos rather than audio tracks",
-                checked = AppState.hideVideoSongs,
-                onCheckedChange = { AppState.toggleHideVideoSongs(it) },
-                colorScheme = colorScheme
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        SettingsGroup(title = "Lyrics", colorScheme = colorScheme) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Provider", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LyricsProvider.entries.forEach { provider ->
-                        FilterChip(
-                            selected = AppState.lyricsProviderPref == provider,
-                            onClick = { AppState.setLyricsProvider(provider) },
-                            label = {
-                                Text(
-                                    when (provider) {
-                                        LyricsProvider.AUTO -> "Auto"
-                                        LyricsProvider.BETTERLYRICS -> "BetterLyrics"
-                                        LyricsProvider.SIMPMUSIC -> "SimpMusic"
-                                        LyricsProvider.LRCLIB -> "LrcLib"
-                                        LyricsProvider.LYRICSPLUS -> "LyricsPlus"
-                                        LyricsProvider.YOUTUBE -> "YouTube"
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        SettingsGroup(title = "Privacy", colorScheme = colorScheme) {
-            SettingsToggle(
-                title = "Pause listen history",
-                subtitle = "Stops recording played songs to your local history",
-                checked = AppState.pauseListenHistory,
-                onCheckedChange = { AppState.togglePauseListenHistory(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsActionRow(
-                title = "Clear listen history",
-                subtitle = "Permanently deletes all locally stored play history",
-                colorScheme = colorScheme,
-                onClick = { AppState.clearListenHistory() }
-            )
-
-            SettingsToggle(
-                title = "Pause search history",
-                subtitle = "Stops saving your search queries",
-                checked = AppState.pauseSearchHistory,
-                onCheckedChange = { AppState.togglePauseSearchHistory(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsActionRow(
-                title = "Clear search history",
-                subtitle = "Removes all saved search queries",
-                colorScheme = colorScheme,
-                onClick = { AppState.clearSearchHistory() }
-            )
         }
     }
 }
@@ -215,7 +139,11 @@ fun SettingsScreen(colorScheme: ColorScheme) {
 fun SettingsGroup(title: String, colorScheme: ColorScheme, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = colorScheme.primary, modifier = Modifier.padding(bottom = 12.dp))
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)), shape = RoundedCornerShape(16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
             Column(content = content)
         }
     }
@@ -240,7 +168,7 @@ fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onCheckedC
             onCheckedChange = onCheckedChange,
             thumbContent = {
                 Icon(
-                    imageVector = if (checked) Icons.Default.Check else Icons.Default.Close,
+                    imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
                     contentDescription = null,
                     modifier = Modifier.size(SwitchDefaults.IconSize)
                 )
@@ -262,6 +190,62 @@ fun SettingsActionRow(title: String, subtitle: String, colorScheme: ColorScheme,
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = colorScheme.error)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+// Navigation item component for main settings screen
+@Composable
+private fun SettingsNavigationItem(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    colorScheme: ColorScheme,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        color = androidx.compose.ui.graphics.Color.Transparent,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon container to match Android app style
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = colorScheme.secondaryContainer
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = title,
+                    tint = colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                "→",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colorScheme.onSurfaceVariant
+            )
         }
     }
 }

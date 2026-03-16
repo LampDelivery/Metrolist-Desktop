@@ -512,13 +512,28 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             }
                         }
 
-                        // Topbar overlaid over content area only (not sidebar)
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = AppState.isExpanded,
-                            enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(600, easing = EaseOutQuart)) + fadeIn(),
-                            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(600, easing = EaseInQuart)) + fadeOut()
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
+                        // Always keep ExpandedPlayerView composed so the animated gradient
+                        // and image loading are pre-initialized, eliminating first-open stutter.
+                        // Use graphicsLayer to slide/fade it in/out instead of AnimatedVisibility.
+                        if (AppState.currentTrack != null) {
+                            val expandTransition = updateTransition(targetState = AppState.isExpanded, label = "expandedPlayer")
+                            val expandOffset by expandTransition.animateFloat(
+                                transitionSpec = {
+                                    if (targetState) tween(400, easing = EaseOutCubic)
+                                    else tween(300, easing = EaseInCubic)
+                                },
+                                label = "expandOffset"
+                            ) { expanded -> if (expanded) 1f else 0f }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        translationY = size.height * (1f - expandOffset)
+                                        alpha = expandOffset.coerceIn(0f, 1f)
+                                    }
+                                    .padding(top = if (expandOffset > 0.5f) 48.dp else 0.dp) // Ensure it doesn't go behind titlebar
+                                    .background(colorScheme.background.copy(alpha = expandOffset))
+                            ) {
                                 ExpandedPlayerView()
                             }
                         }
@@ -845,6 +860,8 @@ private fun saveWindowState(state: WindowState) {
 }
 
 fun main() {
+    val isLinux = System.getProperty("os.name").contains("Linux", ignoreCase = true)
+
     // Write uncaught exceptions to a log file — installer builds have no visible console.
     val logDir = java.io.File(System.getProperty("user.home"), ".metrolist")
     logDir.mkdirs()
@@ -946,7 +963,7 @@ fun main() {
             title = "Metrolist",
             state = windowState,
             undecorated = true,
-            transparent = true,
+            transparent = !isLinux,
             icon = dynamicIcon
         ) {
             LaunchedEffect(Unit) {
@@ -973,6 +990,36 @@ fun main() {
                 }
                 window.addWindowListener(listener)
                 onDispose { window.removeWindowListener(listener) }
+            }
+
+            // On Linux: use window.shape to clip rounded corners instead of transparency.
+            // This lets tiling WMs (i3, sway, Hyprland, etc.) treat the window as a normal
+            // tileable window rather than force-floating it.
+            if (isLinux) {
+                DisposableEffect(window) {
+                    fun applyShape() {
+                        window.shape = if (AppState.isMaximized) null
+                        else java.awt.geom.RoundRectangle2D.Double(
+                            0.0, 0.0,
+                            window.width.toDouble(), window.height.toDouble(),
+                            24.0, 24.0
+                        )
+                    }
+                    val resizeListener = object : java.awt.event.ComponentAdapter() {
+                        override fun componentResized(e: java.awt.event.ComponentEvent?) = applyShape()
+                    }
+                    window.addComponentListener(resizeListener)
+                    applyShape()
+                    onDispose { window.removeComponentListener(resizeListener) }
+                }
+                LaunchedEffect(AppState.isMaximized) {
+                    window.shape = if (AppState.isMaximized) null
+                    else java.awt.geom.RoundRectangle2D.Double(
+                        0.0, 0.0,
+                        window.width.toDouble(), window.height.toDouble(),
+                        24.0, 24.0
+                    )
+                }
             }
             LaunchedEffect(windowState.placement) {
                 AppState.isMaximized = windowState.placement == WindowPlacement.Maximized

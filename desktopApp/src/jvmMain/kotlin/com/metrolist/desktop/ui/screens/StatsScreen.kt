@@ -1,11 +1,9 @@
 package com.metrolist.desktop.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.ui.components.AsyncImage
+import com.metrolist.desktop.ui.components.ChipsRow
 import com.metrolist.desktop.ui.theme.*
 import com.metrolist.desktop.utils.ArtistStat
 import com.metrolist.desktop.utils.HistoryStat
@@ -51,20 +50,11 @@ fun StatsScreen(colorScheme: ColorScheme) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Period chips
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatPeriod.values().forEach { p ->
-                FilterChip(
-                    selected = period == p,
-                    onClick = { period = p },
-                    label = { Text(p.label) }
-                )
-            }
-        }
+        ChipsRow(
+            chips = StatPeriod.values().map { it to it.label },
+            currentValue = period,
+            onValueUpdate = { period = it }
+        )
 
         when {
             isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
