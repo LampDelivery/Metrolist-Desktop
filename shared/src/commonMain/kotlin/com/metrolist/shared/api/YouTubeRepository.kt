@@ -25,7 +25,10 @@ suspend fun fetchArtistIconFromITunes(artistName: String, httpClient: io.ktor.cl
 }
 
 
+data class LyricsWithProvider(val lyrics: String?, val provider: String)
+
 class YouTubeRepository(private val innerTube: InnerTube) {
+    private val betterLyricsProvider = BetterLyricsProvider(innerTube.httpClient)
     private val lyricsProvider = LrcLibLyricsProvider(innerTube.httpClient)
     private val lyricsPlusProvider = LyricsPlusProvider(innerTube.httpClient)
     private val simpMusicProvider = SimpMusicLyricsProvider(innerTube.httpClient)
@@ -59,7 +62,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
     suspend fun getHomePageData(params: String? = null): HomePageData {
         return try {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = "FEmusic_home", params = params, setLogin = true).body<BrowseResponse>()
-            
+
             val chips = mutableListOf<Chip>()
             response.contents?.singleColumnBrowseResultsRenderer?.get("tabs")?.jsonArray?.getOrNull(0)?.jsonObject
                 ?.get("tabRenderer")?.jsonObject?.get("content")?.jsonObject?.get("sectionListRenderer")?.jsonObject
@@ -74,7 +77,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
             val sections = mutableListOf<HomeSection>()
             val contents = response.contents
-            
+
             val sectionList = contents?.singleColumnBrowseResultsRenderer?.let { it["tabs"]?.jsonArray?.getOrNull(0)?.jsonObject }
                 ?.get("tabRenderer")?.jsonObject?.get("content")?.jsonObject?.get("sectionListRenderer")?.jsonObject
                 ?: contents?.twoColumnBrowseResultsRenderer?.let { it["tabs"]?.jsonArray?.getOrNull(0)?.jsonObject }
@@ -88,7 +91,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
             val continuationToken = sectionList?.get("continuations")?.jsonArray?.getOrNull(0)?.jsonObject
                 ?.get("nextContinuationData")?.jsonObject?.get("continuation")?.jsonPrimitive?.contentOrNull
-            
+
             HomePageData(chips = chips, sections = sections, continuation = continuationToken)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -125,24 +128,24 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             ?: shelfObj["gridRenderer"]?.jsonObject
 
         if (shelf != null) {
-            val title = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
+            val title = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: shelf["title"]?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
                 ?: shelf["header"]?.jsonObject?.get("musicCarouselShelfBasicHeaderRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: shelf["header"]?.jsonObject?.get("gridHeaderRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: "Tracks"
-            
+
             val subtitle = shelf["header"]?.jsonObject?.get("musicCarouselShelfBasicHeaderRenderer")?.jsonObject?.get("strapline")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
 
             val endpoint = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("navigationEndpoint")?.jsonObject
                 ?: shelf["header"]?.jsonObject?.get("musicCarouselShelfBasicHeaderRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("navigationEndpoint")?.jsonObject
-            
+
             val browseId = endpoint?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
             val sectionParams = endpoint?.get("browseEndpoint")?.jsonObject?.get("params")?.jsonPrimitive?.contentOrNull
 
             val itemsArray = shelf["contents"]?.jsonArray ?: shelf["items"]?.jsonArray
             val items = itemsArray?.mapNotNull { item ->
                 val itemObj = item.jsonObject
-                parseItem(itemObj["musicResponsiveListItemRenderer"]?.jsonObject 
+                parseItem(itemObj["musicResponsiveListItemRenderer"]?.jsonObject
                     ?: itemObj["musicTwoRowItemRenderer"]?.jsonObject
                     ?: itemObj)
             } ?: emptyList()
@@ -163,21 +166,22 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         }
     }
 
-    suspend fun getArtist(channelId: String): Map<String, List<YTItem>> {
+    suspend fun getArtist(channelId: String): ArtistPageResult {
         return try {
+            val sectionBrowseIds = mutableMapOf<String, Pair<String?, String?>>()
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = channelId, setLogin = true).body<BrowseResponse>()
-            val parsed = parseBrowseResponse(response)
-            
+            val parsed = parseBrowseResponse(response, sectionBrowseIds)
+
             val header = response.header
             val h = header?.musicImmersiveHeaderRenderer
                 ?: header?.musicVisualHeaderRenderer
                 ?: header?.musicHeaderRenderer
                 ?: header?.musicDetailHeaderRenderer
-            
+
             val banner = h?.get("thumbnail")?.jsonObject?.get("musicThumbnailRenderer")?.jsonObject?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("foregroundThumbnail")?.jsonObject?.get("musicThumbnailRenderer")?.jsonObject?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("backgroundImage")?.jsonObject?.get("musicThumbnailRenderer")?.jsonObject?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
-            
+
             val subscribers = h?.get("subscriptionButton")?.jsonObject?.get("subscribeButtonRenderer")?.jsonObject?.get("subscriberCountText")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("subscriptionButton")?.jsonObject?.get("subscribeButtonRenderer")?.jsonObject?.get("longSubscriberCountText")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
 
@@ -189,8 +193,8 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 ?.get("runs")?.jsonArray
                 ?.joinToString("") { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: "" }
                 ?.takeIf { it.isNotBlank() }
-            
-            val title = h?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
+
+            val title = h?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("title")?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
                 ?: h?.get("title")?.jsonPrimitive?.contentOrNull
                 ?: "Artist"
@@ -233,9 +237,9 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     }
                 }
             }
-            sections
+            ArtistPageResult(sections, sectionBrowseIds)
         } catch (e: Exception) {
-            emptyMap()
+            ArtistPageResult(emptyMap())
         }
     }
 
@@ -244,15 +248,15 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         return try {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = id, setLogin = true).body<BrowseResponse>()
             val parsed = parseBrowseResponse(response)
-            
+
             val header = response.header
             var title: String? = null
             var thumbnail: String? = null
             var author: String? = null
-            
+
             val detailHeader = header?.musicDetailHeaderRenderer
             if (detailHeader != null) {
-                title = detailHeader["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
+                title = detailHeader["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                     ?: detailHeader["title"]?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
                 thumbnail = detailHeader["thumbnail"]?.jsonObject?.get("croppedSquareThumbnailRenderer")?.jsonObject?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
                 author = detailHeader["subtitle"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
@@ -285,7 +289,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 thumbnail = thumbnail,
                 author = author
             )
-            
+
             val sections = parsed.sections.toMutableMap()
             sections["header"] = listOf(playlistInfo)
             sections
@@ -297,11 +301,11 @@ class YouTubeRepository(private val innerTube: InnerTube) {
     suspend fun getAlbum(albumId: String): AlbumPage? {
         return try {
             val response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = albumId, setLogin = true).body<BrowseResponse>()
-            
+
             val urlCanonical = response.microformat?.get("microformatDataRenderer")?.jsonObject?.get("urlCanonical")?.jsonPrimitive?.contentOrNull
             val playlistId = (if (urlCanonical?.contains("=") == true) urlCanonical.substringAfterLast("=") else null)
                 ?: response.header?.musicDetailHeaderRenderer?.get("menu")?.jsonObject?.get("menuRenderer")?.jsonObject?.get("topLevelButtons")?.jsonArray?.firstOrNull()?.jsonObject?.get("buttonRenderer")?.jsonObject?.get("navigationEndpoint")?.jsonObject?.get("watchPlaylistEndpoint")?.jsonObject?.get("playlistId")?.jsonPrimitive?.contentOrNull
-            
+
             if (playlistId == null) return null
 
             val header = response.contents?.twoColumnBrowseResultsRenderer?.let { it["tabs"]?.jsonArray?.getOrNull(0)?.jsonObject }
@@ -312,7 +316,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val title = header?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: header?.get("title")?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
                 ?: ""
-            
+
             val artists = mutableListOf<ArtistTiny>()
             val artistRuns = header?.get("straplineTextOne")?.jsonObject?.get("runs")?.jsonArray
             val subtitleRuns = header?.get("subtitle")?.jsonObject?.get("runs")?.jsonArray
@@ -350,7 +354,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             }
 
             val year = header?.get("subtitle")?.jsonObject?.get("runs")?.jsonArray?.lastOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
-            
+
             val thumbnail = (header?.get("thumbnail")?.jsonObject?.get("musicThumbnailRenderer")?.jsonObject ?: header?.get("thumbnail")?.jsonObject?.get("croppedSquareThumbnailRenderer")?.jsonObject)
                 ?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
                 ?.replace(Regex("=w\\d+-h\\d+.*$"), "=w1000-h1000")
@@ -365,10 +369,10 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             )
 
             val songs = getAlbumSongs(playlistId, albumItem)
-            
+
             val otherVersions = response.contents?.twoColumnBrowseResultsRenderer?.get("secondaryContents")?.jsonObject
                 ?.get("sectionListRenderer")?.jsonObject?.get("contents")?.jsonArray?.getOrNull(1)?.jsonObject
-                ?.get("musicCarouselShelfRenderer")?.jsonObject?.get("contents")?.jsonArray?.mapNotNull { 
+                ?.get("musicCarouselShelfRenderer")?.jsonObject?.get("contents")?.jsonArray?.mapNotNull {
                     parseItem(it.jsonObject["musicTwoRowItemRenderer"]?.jsonObject) as? AlbumItem
                 } ?: emptyList()
 
@@ -382,9 +386,9 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         val songs = mutableListOf<SongItem>()
         try {
             var response = innerTube.browse(YouTubeClient.WEB_REMIX, browseId = "VL$playlistId", setLogin = true).body<BrowseResponse>()
-            
+
             fun processPlaylistShelf(shelf: JsonObject) {
-                shelf["contents"]?.jsonArray?.forEach { 
+                shelf["contents"]?.jsonArray?.forEach {
                     val item = parseItem(it.jsonObject["musicResponsiveListItemRenderer"]?.jsonObject)
                     if (item is SongItem) {
                         songs.add(item.copy(album = AlbumTiny(album.id, album.title), thumbnail = item.thumbnail ?: album.thumbnail))
@@ -394,8 +398,8 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
             val contents = response.contents?.twoColumnBrowseResultsRenderer?.get("secondaryContents")?.jsonObject
                 ?.get("sectionListRenderer")?.jsonObject?.get("contents")?.jsonArray
-            
-            contents?.forEach { 
+
+            contents?.forEach {
                 it.jsonObject["musicPlaylistShelfRenderer"]?.jsonObject?.let { shelf -> processPlaylistShelf(shelf) }
             }
 
@@ -406,7 +410,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 val contResponse = innerTube.browse(YouTubeClient.WEB_REMIX, continuation = continuationToken, setLogin = true).body<BrowseResponse>()
                 val contShelf = contResponse.continuationContents?.musicPlaylistShelfContinuation
                 if (contShelf != null) {
-                    contShelf["contents"]?.jsonArray?.forEach { 
+                    contShelf["contents"]?.jsonArray?.forEach {
                         val item = parseItem(it.jsonObject["musicResponsiveListItemRenderer"]?.jsonObject)
                         if (item is SongItem) {
                             songs.add(item.copy(album = AlbumTiny(album.id, album.title), thumbnail = item.thumbnail ?: album.thumbnail))
@@ -447,7 +451,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val contents = response["contents"]?.jsonArray
             val queries = mutableListOf<String>()
             val recommendedItems = mutableListOf<YTItem>()
-            
+
             contents?.getOrNull(0)?.jsonObject?.get("searchSuggestionsSectionRenderer")?.jsonObject?.get("contents")?.jsonArray?.forEach { element ->
                 val suggestionRenderer = element.jsonObject["searchSuggestionRenderer"]?.jsonObject
                 suggestionRenderer?.get("suggestion")?.jsonObject?.get("runs")?.jsonArray?.forEach { run ->
@@ -484,16 +488,16 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
             sectionList?.forEach { sectionElement ->
                 val sectionObj = sectionElement.jsonObject
-                
+
                 // YouTube Music search often wraps shelves in itemSectionRenderer
                 val itemSection = sectionObj["itemSectionRenderer"]?.jsonObject
                 val actualContents = itemSection?.get("contents")?.jsonArray ?: JsonArray(listOf(sectionElement))
-                
+
                 actualContents.forEach { contentElement ->
                     val contentObj = contentElement.jsonObject
                     val shelf = contentObj["musicShelfRenderer"]?.jsonObject
                         ?: contentObj["musicCardShelfRenderer"]?.jsonObject
-                    
+
                     if (shelf != null) {
                         val title = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                             ?: shelf["header"]?.jsonObject?.get("musicCardShelfHeaderBasicRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
@@ -544,9 +548,9 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     ?.get("contents")?.jsonArray
 
             // Try to find the shelf in the response
-            val shelf = contents?.mapNotNull { 
-                it.jsonObject["musicShelfRenderer"]?.jsonObject ?: 
-                it.jsonObject["itemSectionRenderer"]?.jsonObject?.get("contents")?.jsonArray?.getOrNull(0)?.jsonObject?.get("musicShelfRenderer")?.jsonObject 
+            val shelf = contents?.mapNotNull {
+                it.jsonObject["musicShelfRenderer"]?.jsonObject ?:
+                it.jsonObject["itemSectionRenderer"]?.jsonObject?.get("contents")?.jsonArray?.getOrNull(0)?.jsonObject?.get("musicShelfRenderer")?.jsonObject
             }?.lastOrNull()
                 ?: response["continuationContents"]?.jsonObject?.get("musicShelfContinuation")?.jsonObject
 
@@ -576,19 +580,19 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             } catch (_: Exception) { null }
         }
 
-        val response = tryPlayer(YouTubeClient.TVHTML5_EMBEDDED)
-            ?: tryPlayer(YouTubeClient.ANDROID_VR)
-            ?: tryPlayer(YouTubeClient.ANDROID)
+        val response = tryPlayer(YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER)
+            ?: tryPlayer(YouTubeClient.ANDROID_VR_1_61_48)
+            ?: tryPlayer(YouTubeClient.MOBILE)
             ?: tryPlayer(YouTubeClient.WEB_REMIX)
-        
+
         if (response == null) return null
 
         val formats = response.streamingData?.adaptiveFormats ?: emptyList()
         val audioFormat = formats.filter { it.isAudio }
             .sortedByDescending { it.bitrate }
-            .firstOrNull { it.mimeType.contains("audio/webm") } 
+            .firstOrNull { it.mimeType.contains("audio/webm") }
             ?: formats.filter { it.isAudio }.maxByOrNull { it.bitrate }
-        
+
         return audioFormat?.url
     }
 
@@ -599,17 +603,25 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         album: String? = null,
         videoId: String? = null,
         provider: LyricsProvider = LyricsProvider.AUTO
-    ): String? {
+    ): LyricsWithProvider {
         return when (provider) {
-            LyricsProvider.LRCLIB -> lyricsProvider.getLyrics(title, artist, duration, album)
-            LyricsProvider.LYRICSPLUS -> lyricsPlusProvider.getLyrics(title, artist, duration, videoId)
-            LyricsProvider.YOUTUBE -> videoId?.let { youtubeLyricsProvider.getLyrics(it) }
-            LyricsProvider.AUTO ->
-                // SimpMusic first: has word-sync via richSyncLyrics, needs videoId
+            LyricsProvider.BETTERLYRICS -> LyricsWithProvider(betterLyricsProvider.getLyrics(title, artist, duration, album), "BetterLyrics")
+            LyricsProvider.SIMPMUSIC -> LyricsWithProvider(videoId?.let { simpMusicProvider.getLyrics(it, duration) }, "SimpMusic")
+            LyricsProvider.LRCLIB -> LyricsWithProvider(lyricsProvider.getLyrics(title, artist, duration, album), "LrcLib")
+            LyricsProvider.LYRICSPLUS -> LyricsWithProvider(lyricsPlusProvider.getLyrics(title, artist, duration, videoId), "LyricsPlus")
+            LyricsProvider.YOUTUBE -> LyricsWithProvider(videoId?.let { youtubeLyricsProvider.getLyrics(it) }, "YouTube Music")
+            LyricsProvider.AUTO -> {
+                // Priority: BetterLyrics -> SimpMusic -> LrcLib -> LyricsPlus -> YouTube
+                betterLyricsProvider.getLyrics(title, artist, duration, album)
+                    ?.let { return LyricsWithProvider(it, "BetterLyrics") }
                 (videoId?.let { simpMusicProvider.getLyrics(it, duration) })
-                    ?: lyricsProvider.getLyrics(title, artist, duration, album)
-                    ?: lyricsPlusProvider.getLyrics(title, artist, duration, videoId)
-                    ?: videoId?.let { youtubeLyricsProvider.getLyrics(it) }
+                    ?.let { return LyricsWithProvider(it, "SimpMusic") }
+                lyricsProvider.getLyrics(title, artist, duration, album)
+                    ?.let { return LyricsWithProvider(it, "LrcLib") }
+                lyricsPlusProvider.getLyrics(title, artist, duration, videoId)
+                    ?.let { return LyricsWithProvider(it, "LyricsPlus") }
+                LyricsWithProvider(videoId?.let { youtubeLyricsProvider.getLyrics(it) }, "YouTube Music")
+            }
         }
     }
 
@@ -630,7 +642,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
     suspend fun addToPlaylist(playlistId: String, videoId: String) {
         try {
-            innerTube.editPlaylist(YouTubeClient.WEB_REMIX, playlistId, videoId)
+            innerTube.addToPlaylist(YouTubeClient.WEB_REMIX, playlistId, videoId)
         } catch (_: Exception) {}
     }
 
@@ -706,7 +718,11 @@ class YouTubeRepository(private val innerTube: InnerTube) {
 
     suspend fun subscribeChannel(channelId: String, subscribe: Boolean): Boolean {
         return try {
-            innerTube.subscribeChannel(YouTubeClient.WEB_REMIX, channelId, subscribe)
+            if (subscribe) {
+                innerTube.subscribeChannel(YouTubeClient.WEB_REMIX, channelId)
+            } else {
+                innerTube.unsubscribeChannel(YouTubeClient.WEB_REMIX, channelId)
+            }
             true
         } catch (_: Exception) {
             false
@@ -727,8 +743,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             ?.get("tabRenderer")?.jsonObject
             ?.get("content")?.jsonObject
             ?.get("musicQueueRenderer")?.jsonObject
-            ?.get("content")?.jsonObject
-            ?.get("playlistPanelRenderer")?.jsonObject
+            ?.get("content")?.jsonObject?.get("playlistPanelRenderer")?.jsonObject
             ?.get("contents")?.jsonArray
 
         queueContents?.forEach { item ->
@@ -759,6 +774,57 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         return items
     }
 
+    /** Fetches the library feedback tokens (add/remove) for a single video from the /next endpoint.
+     *  These are needed to like/unlike songs that weren't fetched from a library context. */
+    suspend fun getSongLibraryTokens(videoId: String): Pair<String?, String?> {
+        return try {
+            val response = innerTube.next(
+                YouTubeClient.WEB_REMIX,
+                videoId = videoId
+            ).body<JsonObject>()
+
+            val queueContents = response["contents"]?.jsonObject
+                ?.get("singleColumnMusicWatchNextResultsRenderer")?.jsonObject
+                ?.get("tabbedRenderer")?.jsonObject
+                ?.get("watchNextTabbedResultsRenderer")?.jsonObject
+                ?.get("tabs")?.jsonArray
+                ?.getOrNull(0)?.jsonObject
+                ?.get("tabRenderer")?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("musicQueueRenderer")?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("playlistPanelRenderer")?.jsonObject
+                ?.get("contents")?.jsonArray
+
+            val renderer = queueContents?.firstOrNull()?.jsonObject
+                ?.get("playlistPanelVideoRenderer")?.jsonObject ?: return Pair(null, null)
+
+            if (renderer["videoId"]?.jsonPrimitive?.contentOrNull != videoId) return Pair(null, null)
+
+            extractLibraryTokens(renderer)
+        } catch (_: Exception) { Pair(null, null) }
+    }
+
+    private fun extractLibraryTokens(renderer: JsonObject): Pair<String?, String?> {
+        var addToken: String? = null
+        var removeToken: String? = null
+        val menuItems = renderer["menu"]?.jsonObject
+            ?.get("menuRenderer")?.jsonObject
+            ?.get("items")?.jsonArray
+        menuItems?.forEach { menuItem ->
+            val toggle = menuItem.jsonObject["toggleMenuServiceItemRenderer"]?.jsonObject ?: return@forEach
+            val defaultToken = toggle["defaultServiceEndpoint"]?.jsonObject
+                ?.get("feedbackEndpoint")?.jsonObject
+                ?.get("feedbackToken")?.jsonPrimitive?.contentOrNull
+            val toggledToken = toggle["toggledServiceEndpoint"]?.jsonObject
+                ?.get("feedbackEndpoint")?.jsonObject
+                ?.get("feedbackToken")?.jsonPrimitive?.contentOrNull
+            if (defaultToken != null && addToken == null) addToken = defaultToken
+            if (toggledToken != null && removeToken == null) removeToken = toggledToken
+        }
+        return Pair(addToken, removeToken)
+    }
+
     suspend fun fetchArtistIcon(artistName: String): String? =
         fetchArtistIconFromITunes(artistName, innerTube.httpClient)
 
@@ -780,14 +846,21 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         }
     }
 
-    private data class ParsedBrowse(val sections: Map<String, List<YTItem>>, val continuation: String?)
+    private data class ParsedBrowse(
+        val sections: Map<String, List<YTItem>>,
+        val continuation: String?,
+        val sectionBrowseIds: Map<String, Pair<String?, String?>> = emptyMap()
+    )
 
-    private fun parseBrowseResponse(response: BrowseResponse): ParsedBrowse {
+    private fun parseBrowseResponse(
+        response: BrowseResponse,
+        browseIds: MutableMap<String, Pair<String?, String?>>? = null
+    ): ParsedBrowse {
         val sections = mutableMapOf<String, List<YTItem>>()
         var continuationToken: String?
-        
+
         val contents = response.contents ?: return ParsedBrowse(emptyMap(), null)
-        
+
         val sectionList = contents.singleColumnBrowseResultsRenderer?.let { it["tabs"]?.jsonArray?.getOrNull(0)?.jsonObject }
             ?.get("tabRenderer")?.jsonObject?.get("content")?.jsonObject?.get("sectionListRenderer")?.jsonObject
             ?: contents.twoColumnBrowseResultsRenderer?.let { it["tabs"]?.jsonArray?.getOrNull(0)?.jsonObject }
@@ -799,13 +872,13 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             val sectionObj = sectionElement.jsonObject
             if (sectionObj.containsKey("itemSectionRenderer")) {
                 sectionObj["itemSectionRenderer"]?.jsonObject?.get("contents")?.jsonArray?.forEach { subElement ->
-                    processShelf(subElement.jsonObject, sections)
+                    processShelf(subElement.jsonObject, sections, browseIds)
                 }
             } else {
-                processShelf(sectionObj, sections)
+                processShelf(sectionObj, sections, browseIds)
             }
         }
-        
+
         continuationToken = sectionList?.get("continuations")?.jsonArray?.getOrNull(0)?.jsonObject
             ?.get("nextContinuationData")?.jsonObject?.get("continuation")?.jsonPrimitive?.contentOrNull
 
@@ -814,16 +887,16 @@ class YouTubeRepository(private val innerTube: InnerTube) {
         secondaryContents?.get("sectionListRenderer")?.jsonObject?.get("contents")?.jsonArray?.forEach { section ->
             val playlistShelf = section.jsonObject["musicPlaylistShelfRenderer"]?.jsonObject
             if (playlistShelf != null) {
-                processShelf(section.jsonObject, sections)
+                processShelf(section.jsonObject, sections, browseIds)
             }
         }
 
         response.continuationContents?.let { cont ->
-            val musicShelf = cont.musicShelfContinuation 
+            val musicShelf = cont.musicShelfContinuation
                 ?: cont.musicPlaylistShelfContinuation
                 ?: cont.gridContinuation
                 ?: cont.sectionListContinuation?.get("contents")?.jsonArray?.getOrNull(0)?.jsonObject?.get("musicShelfRenderer")?.jsonObject
-                
+
             if (musicShelf != null) {
                 val itemsArray = musicShelf["contents"]?.jsonArray ?: musicShelf["items"]?.jsonArray
                 val items = itemsArray?.mapNotNull { parseItem(it.jsonObject["musicResponsiveListItemRenderer"]?.jsonObject ?: it.jsonObject) } ?: emptyList()
@@ -833,30 +906,48 @@ class YouTubeRepository(private val innerTube: InnerTube) {
             }
         }
 
-        return ParsedBrowse(sections, continuationToken)
+        return ParsedBrowse(sections, continuationToken, browseIds ?: emptyMap())
     }
 
-    private fun processShelf(shelfObj: JsonObject, sections: MutableMap<String, List<YTItem>>) {
+    private fun processShelf(
+        shelfObj: JsonObject,
+        sections: MutableMap<String, List<YTItem>>,
+        browseIds: MutableMap<String, Pair<String?, String?>>? = null
+    ) {
         val shelf = shelfObj["musicShelfRenderer"]?.jsonObject
             ?: shelfObj["musicCarouselShelfRenderer"]?.jsonObject
             ?: shelfObj["musicPlaylistShelfRenderer"]?.jsonObject
             ?: shelfObj["gridRenderer"]?.jsonObject
             ?: return
 
-        val title = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
+        val title = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
             ?: shelf["title"]?.jsonObject?.get("simpleText")?.jsonPrimitive?.contentOrNull
             ?: shelf["header"]?.jsonObject?.get("musicCarouselShelfBasicHeaderRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
             ?: shelf["header"]?.jsonObject?.get("gridHeaderRenderer")?.jsonObject?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
             ?: "Tracks"
-            
+
+        if (browseIds != null) {
+            val endpoint = shelf["title"]?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject
+                ?.get("navigationEndpoint")?.jsonObject
+                ?: shelf["header"]?.jsonObject?.get("musicCarouselShelfBasicHeaderRenderer")?.jsonObject
+                    ?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject
+                    ?.get("navigationEndpoint")?.jsonObject
+                ?: shelf["header"]?.jsonObject?.get("gridHeaderRenderer")?.jsonObject
+                    ?.get("title")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject
+                    ?.get("navigationEndpoint")?.jsonObject
+            val browseId = endpoint?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
+            val params   = endpoint?.get("browseEndpoint")?.jsonObject?.get("params")?.jsonPrimitive?.contentOrNull
+            if (browseId != null) browseIds[title] = Pair(browseId, params)
+        }
+
         val itemsArray = shelf["contents"]?.jsonArray ?: shelf["items"]?.jsonArray
         val items = itemsArray?.mapNotNull { item ->
             val itemObj = item.jsonObject
-            parseItem(itemObj["musicResponsiveListItemRenderer"]?.jsonObject 
+            parseItem(itemObj["musicResponsiveListItemRenderer"]?.jsonObject
                 ?: itemObj["musicTwoRowItemRenderer"]?.jsonObject
                 ?: itemObj)
         } ?: emptyList()
-        
+
         if (items.isNotEmpty()) {
             val existing = sections[title] ?: emptyList()
             sections[title] = existing + items
@@ -912,15 +1003,15 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     val text = (runObj["text"]?.jsonPrimitive?.contentOrNull ?: "").trim()
                     val nav = runObj["navigationEndpoint"]?.jsonObject
                     val runBrowseId = nav?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
-                    
+
                     if (text == "•" || text == "&" || text == "," || text.isBlank()) return@forEach
-                    
+
                     // Filter out non-artist/album strings
                     val lower = text.lowercase()
                     if (lower == "song" || lower == "video" || lower.contains("views") || lower.contains("likes") || lower.contains("play count") || lower.contains("subscribers")) {
                         return@forEach
                     }
-                    
+
                     if (runBrowseId != null) {
                         if (runBrowseId.startsWith("MPREb") || runBrowseId.contains("release_detail") || runBrowseId.startsWith("FEmusic_release_detail")) {
                             album = AlbumTiny(runBrowseId, text)
@@ -939,7 +1030,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                         }
                     }
                 }
-                
+
                 // If we didn't find an explicit album browseId, use the first potential album
                 if (album == null && potentialAlbums.isNotEmpty()) {
                     album = potentialAlbums[0]
@@ -951,7 +1042,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                         !str.matches(Regex("\\d{4}")) && // Year
                         !str.contains(Regex("\\d+.*", RegexOption.IGNORE_CASE)) // Likely views/likes
                     }
-                    
+
                     if (artists.isEmpty() && filtered.isNotEmpty()) {
                         artists.add(ArtistTiny(null, filtered[0]))
                         if (album == null && filtered.size >= 2) {
@@ -970,7 +1061,7 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                 // musicResponsiveListItemRenderer
                 val titleColumn = flexColumns.getOrNull(0)?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
                 val title = titleColumn?.get("text")?.jsonObject?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull ?: return null
-                
+
                 val navigationEndpoint = item["navigationEndpoint"]?.jsonObject ?: item["onTap"]?.jsonObject
                 val browseId = navigationEndpoint?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
                 val videoId = item["playlistItemData"]?.jsonObject?.get("videoId")?.jsonPrimitive?.contentOrNull
@@ -1016,24 +1107,24 @@ class YouTubeRepository(private val innerTube: InnerTube) {
                     }
                     else -> null
                 }
-            } 
-            
+            }
+
             // musicTwoRowItemRenderer
             val titleNode = item["title"]?.jsonObject
-            val title = titleNode?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull 
+            val title = titleNode?.get("runs")?.jsonArray?.getOrNull(0)?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull
                 ?: titleNode?.get("simpleText")?.jsonPrimitive?.contentOrNull
                 ?: item["title"]?.jsonPrimitive?.contentOrNull
-            
+
             if (title != null) {
                 val navigationEndpoint = item["navigationEndpoint"]?.jsonObject
                 val browseId = navigationEndpoint?.get("browseEndpoint")?.jsonObject?.get("browseId")?.jsonPrimitive?.contentOrNull
                 val videoId = navigationEndpoint?.get("watchEndpoint")?.jsonObject?.get("videoId")?.jsonPrimitive?.contentOrNull
-                
+
                 var thumbnail = (item["thumbnailRenderer"]?.jsonObject ?: item["thumbnail"]?.jsonObject)
                     ?.get("musicThumbnailRenderer")?.jsonObject
                     ?.get("thumbnail")?.jsonObject?.get("thumbnails")?.jsonArray?.lastOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
                 thumbnail = thumbnail?.replace(Regex("=w\\d+-h\\d+.*$"), "=w1000-h1000")
-                
+
                 val subtitleRuns = item["subtitle"]?.jsonObject?.get("runs")?.jsonArray
                 val (artists, album, duration) = extractMetadata(subtitleRuns)
 

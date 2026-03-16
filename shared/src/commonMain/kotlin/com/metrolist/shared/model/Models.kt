@@ -108,6 +108,13 @@ data class AlbumPage(
     val otherVersions: List<AlbumItem> = emptyList()
 )
 
+/** Result of loading an artist page, including per-section "view all" browse IDs. */
+data class ArtistPageResult(
+    val sections: Map<String, List<YTItem>>,
+    /** Maps section title -> (browseId, params?) for "See all" navigation. */
+    val sectionBrowseIds: Map<String, Pair<String?, String?>> = emptyMap()
+)
+
 @Serializable
 data class Chip(
     val title: String,
@@ -185,4 +192,4 @@ fun List<YTItem>.filterYoutubeShorts(hideYoutubeShorts: Boolean): List<YTItem> =
         }
     }
 
-enum class LyricsProvider { AUTO, LRCLIB, LYRICSPLUS, YOUTUBE }
+enum class LyricsProvider { AUTO, BETTERLYRICS, SIMPMUSIC, LRCLIB, LYRICSPLUS, YOUTUBE }

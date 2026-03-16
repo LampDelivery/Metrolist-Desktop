@@ -126,6 +126,7 @@ fun parseLrc(lyrics: String): List<LyricsEntry> {
 fun DesktopLyricsView() {
     val lyricsRaw = AppState.currentLyrics
     val loading = AppState.isLyricsLoading
+    val provider = AppState.currentLyricsProvider
     val lyrics = remember(lyricsRaw) { lyricsRaw?.let { parseLrc(it) } ?: emptyList() }
     val currentPosition by AppState.player.currentPosition.collectAsState(0L)
     val lazyListState = rememberLazyListState()
@@ -182,6 +183,16 @@ fun DesktopLyricsView() {
                     state = lazyListState,
                     contentPadding = PaddingValues(vertical = 64.dp)
                 ) {
+                    if (provider != null) {
+                        item {
+                            Text(
+                                text = "Lyrics from $provider",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+                        }
+                    }
                     itemsIndexed(lyrics) { i, entry ->
                         LyricsLine(
                             entry = entry,

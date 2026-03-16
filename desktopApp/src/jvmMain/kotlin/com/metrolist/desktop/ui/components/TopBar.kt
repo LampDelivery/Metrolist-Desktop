@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.WindowScope
 import com.metrolist.desktop.state.AppState
-import com.metrolist.desktop.state.GlobalYouTubeRepository
+import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.shared.api.innertube.models.AccountInfo
 
 @Composable
@@ -211,8 +211,7 @@ fun WindowScope.CustomTitleBar(
                                         Column {
                                             Text(
                                                 text = GlobalYouTubeRepository.instance.lastAccountInfo?.name ?: "User",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.SemiBold,
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -255,16 +254,44 @@ fun WindowScope.CustomTitleBar(
                                     leadingIcon = { Icon(Icons.Outlined.Settings, null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Integrations") }, 
-                                    onClick = { 
+                                    text = { Text("Integrations") },
+                                    onClick = {
                                         expanded = false
                                         AppState.showIntegrations = true
                                         AppState.showSettings = false
                                         AppState.showSignIn = false
                                         AppState.isExpanded = false
-                                    }, 
+                                    },
                                     leadingIcon = { Icon(Icons.Outlined.Extension, null) }
                                 )
+                                val pendingUpdate = AppState.availableUpdate
+                                if (pendingUpdate != null) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = colorScheme.outlineVariant)
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "v$pendingUpdate available",
+                                                color = colorScheme.primary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        },
+                                        onClick = {
+                                            expanded = false
+                                            try {
+                                                java.awt.Desktop.getDesktop().browse(
+                                                    java.net.URI("https://github.com/LampDelivery/Metrolist-Desktop/releases/latest")
+                                                )
+                                            } catch (_: Exception) {}
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Upgrade,
+                                                contentDescription = null,
+                                                tint = colorScheme.primary
+                                            )
+                                        }
+                                    )
+                                }
                                 if (AppState.isSignedIn) {
                                     DropdownMenuItem(
                                         text = { Text("Authentication Data") },

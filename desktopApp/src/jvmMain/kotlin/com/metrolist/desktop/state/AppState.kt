@@ -4,12 +4,14 @@ package com.metrolist.desktop.state
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.metrolist.shared.api.YouTubeRepository
-import com.metrolist.shared.api.innertube.InnerTube
+import com.metrolist.shared.api.LyricsWithProvider
 import com.metrolist.shared.model.*
 import com.metrolist.shared.playback.MusicPlayer
 import com.metrolist.shared.playback.MusicQueue
+import com.metrolist.shared.state.GlobalInnerTube
+import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.desktop.constants.DefaultThemeColor
+import com.metrolist.desktop.BuildConfig
 import com.metrolist.desktop.constants.RepeatMode
 import com.metrolist.desktop.constants.SliderStyle
 import com.metrolist.desktop.utils.DiscordRPCManager
@@ -17,10 +19,6 @@ import com.metrolist.desktop.utils.HistoryEntry
 import com.metrolist.desktop.utils.HistoryRepository
 import com.metrolist.desktop.utils.HistoryStat
 import com.metrolist.desktop.utils.ScrobbleManager
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,21 +27,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import java.net.URI
 import java.util.prefs.Preferences
 
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
-
-
-object GlobalInnerTube {
-    val client = HttpClient(CIO) {
-        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-    }
-    val instance: InnerTube = InnerTube(client)
-}
-
-object GlobalYouTubeRepository {
-    val instance: YouTubeRepository = YouTubeRepository(GlobalInnerTube.instance)
-}
 
 object AppState {
     val client get() = GlobalInnerTube.client
@@ -73,12 +60,19 @@ object AppState {
     var showSettings by mutableStateOf(false)
     var showSignIn by mutableStateOf(false)
     var showIntegrations by mutableStateOf(false)
+    var availableUpdate by mutableStateOf<String?>(null)
     
     var selectedArtistId by mutableStateOf<String?>(null)
     var artistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
+    var artistSectionBrowseIds by mutableStateOf<Map<String, Pair<String?, String?>>>(emptyMap())
     var isArtistLoading by mutableStateOf(false)
     var artistIsSubscribed by mutableStateOf(false)
     var topBarScrollOffset by mutableStateOf(Int.MAX_VALUE)
+
+    // Artist section "See all" view
+    var artistSectionTitle by mutableStateOf<String?>(null)
+    var artistSectionItems by mutableStateOf<List<YTItem>>(emptyList())
+    var isArtistSectionLoading by mutableStateOf(false)
 
     var selectedPlaylistId by mutableStateOf<String?>(null)
     var playlistData by mutableStateOf<Map<String, List<YTItem>>>(emptyMap())
@@ -113,6 +107,7 @@ object AppState {
     
     var currentLyrics by mutableStateOf<String?>(null)
     var isLyricsLoading by mutableStateOf(false)
+    var currentLyricsProvider by mutableStateOf<String?>(null)
 
     // Search Results
     var searchSummaryPage by mutableStateOf<SearchSummaryPage?>(null)
@@ -239,6 +234,7 @@ object AppState {
                     refreshHistory()
                 } else {
                     currentLyrics = null
+                    currentLyricsProvider = null
                     cachedArtistIcon = null
                 }
                 updateDiscordRpc()
@@ -293,8 +289,38 @@ object AppState {
             }
         }
 
+        // Check for a newer release on GitHub
+        scope.launch(Dispatchers.IO) {
+            try {
+                val conn = URI("https://api.github.com/repos/LampDelivery/Metrolist-Desktop/releases/latest")
+                    .toURL().openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("User-Agent", "Metrolist-Desktop/${BuildConfig.APP_VERSION}")
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                conn.connectTimeout = 10_000
+                conn.readTimeout = 10_000
+                conn.connect()
+                val body = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                val tag = Json.parseToJsonElement(body).jsonObject["tag_name"]
+                    ?.jsonPrimitive?.contentOrNull?.trimStart('v') ?: return@launch
+                if (isNewerVersion(tag, BuildConfig.APP_VERSION)) availableUpdate = tag
+            } catch (_: Exception) {}
+        }
+
         // Load play history on startup
         refreshHistory()
+    }
+
+    private fun isNewerVersion(latest: String, current: String): Boolean {
+        val l = latest.split(".").mapNotNull { it.toIntOrNull() }
+        val c = current.split(".").mapNotNull { it.toIntOrNull() }
+        for (i in 0 until maxOf(l.size, c.size)) {
+            val lv = l.getOrElse(i) { 0 }
+            val cv = c.getOrElse(i) { 0 }
+            if (lv > cv) return true
+            if (lv < cv) return false
+        }
+        return false
     }
 
     private fun updateDiscordRpc() {
@@ -657,13 +683,25 @@ object AppState {
     fun toggleLike(song: SongItem) {
         scope.launch {
             val isLiked = song.id in likedSongIds
-            val token = if (isLiked) song.libraryRemoveToken else song.libraryAddToken
+            var addToken = song.libraryAddToken
+            var removeToken = song.libraryRemoveToken
+
+            // If tokens are missing (common for songs not fetched from library context),
+            // fetch them dynamically from the /next endpoint.
+            if (addToken == null && removeToken == null && isSignedIn) {
+                val tokens = GlobalYouTubeRepository.instance.getSongLibraryTokens(song.id)
+                addToken = tokens.first
+                removeToken = tokens.second
+            }
+
+            val token = if (isLiked) removeToken else addToken
             if (token != null) {
                 GlobalYouTubeRepository.instance.sendFeedback(listOf(token))
-                val newSet = likedSongIds.toMutableSet()
-                if (isLiked) newSet.remove(song.id) else newSet.add(song.id)
-                likedSongIds = newSet
             }
+            // Always update local liked state so the UI responds immediately.
+            val newSet = likedSongIds.toMutableSet()
+            if (isLiked) newSet.remove(song.id) else newSet.add(song.id)
+            likedSongIds = newSet
         }
     }
 
@@ -959,7 +997,7 @@ object AppState {
                         prefs.flush()
                     }
                 }
-                
+
                 val result = GlobalYouTubeRepository.instance.getHomePageData(params)
 
                 if (params == null) {
@@ -1006,6 +1044,9 @@ object AppState {
         selectedSearchFilter = null
         searchSummaryPage = null
         searchResultPage = null
+        selectedArtistId = null
+        selectedPlaylistId = null
+        selectedAlbumId = null
         scope.launch {
             try {
                 searchSummaryPage = GlobalYouTubeRepository.instance.getSearchSummary(query)
@@ -1045,6 +1086,25 @@ object AppState {
         }
     }
 
+    fun fetchArtistSection(sectionTitle: String, browseId: String, params: String?) {
+        artistSectionTitle = sectionTitle
+        artistSectionItems = emptyList()
+        isArtistSectionLoading = true
+        scope.launch {
+            try {
+                val data = GlobalYouTubeRepository.instance.getPlaylist(browseId)
+                artistSectionItems = data.values.flatten().filter { it !is PlaylistItem || it.id != "header" }
+            } catch (_: Exception) {}
+            finally { isArtistSectionLoading = false }
+        }
+    }
+
+    fun clearArtistSection() {
+        artistSectionTitle = null
+        artistSectionItems = emptyList()
+        isArtistSectionLoading = false
+    }
+
     fun fetchArtistData(id: String) {
         isExpanded = false
         selectedArtistId = id
@@ -1054,9 +1114,10 @@ object AppState {
         artistIsSubscribed = false
         scope.launch {
             try {
-                val data = GlobalYouTubeRepository.instance.getArtist(id)
-                artistData = data
-                artistIsSubscribed = (data["header"]?.firstOrNull() as? ArtistItem)?.isSubscribed ?: false
+                val result = GlobalYouTubeRepository.instance.getArtist(id)
+                artistData = result.sections
+                artistSectionBrowseIds = result.sectionBrowseIds
+                artistIsSubscribed = (result.sections["header"]?.firstOrNull() as? ArtistItem)?.isSubscribed ?: false
             } catch (_: Exception) {}
             finally {
                 isArtistLoading = false
@@ -1136,10 +1197,11 @@ object AppState {
 
     private fun fetchLyrics(song: SongItem) {
         currentLyrics = null
+        currentLyricsProvider = null
         isLyricsLoading = true
         scope.launch {
-            currentLyrics = try {
-                GlobalYouTubeRepository.instance.getLyrics(
+            try {
+                val result = GlobalYouTubeRepository.instance.getLyrics(
                     title = song.title,
                     artist = song.artists.joinToString { it.name },
                     duration = song.duration,
@@ -1147,8 +1209,10 @@ object AppState {
                     videoId = song.id,
                     provider = lyricsProviderPref
                 )
+                currentLyrics = result.lyrics
+                currentLyricsProvider = if (result.lyrics != null) result.provider else null
             } catch (_: Exception) {
-                "Lyrics not found"
+                currentLyrics = "Lyrics not found"
             } finally {
                 isLyricsLoading = false
             }

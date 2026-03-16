@@ -161,6 +161,8 @@ fun SettingsScreen(colorScheme: ColorScheme) {
                                 Text(
                                     when (provider) {
                                         LyricsProvider.AUTO -> "Auto"
+                                        LyricsProvider.BETTERLYRICS -> "BetterLyrics"
+                                        LyricsProvider.SIMPMUSIC -> "SimpMusic"
                                         LyricsProvider.LRCLIB -> "LrcLib"
                                         LyricsProvider.LYRICSPLUS -> "LyricsPlus"
                                         LyricsProvider.YOUTUBE -> "YouTube"

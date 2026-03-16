@@ -1,66 +1,87 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    kotlin("multiplatform")
-    id("org.jetbrains.compose")
-    id("com.android.library")
-    kotlin("plugin.serialization") version "1.9.24"
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.ksp)
 }
 
 kotlin {
-    androidTarget()
+    // Standard KMP configuration for Android
+    android {
+        namespace = "com.metrolist.shared"
+        compileSdk = 36
+        minSdk = 26
+    }
+    
     jvm("desktop")
     
     jvmToolchain(21)
 
-    targets.all {
-        compilations.all {
-            kotlinOptions {
-                freeCompilerArgs += "-Xexpect-actual-classes"
-            }
-        }
-    }
-    
     sourceSets {
         all {
             languageSettings.optIn("kotlin.RequiresOptIn")
+            languageSettings.optIn("kotlin.ExperimentalStdlibApi")
         }
         val commonMain by getting {
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material)
-                implementation("io.ktor:ktor-client-core:2.3.7")
-                implementation("io.ktor:ktor-client-serialization:2.3.7")
-                implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
-                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+                implementation(compose.material3)
+                
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.json)
+                
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.datetime)
+                
+                implementation(libs.datastore)
+                
+                // Room KMP
+                implementation(libs.room.runtime)
+                implementation(libs.sqlite.bundled)
             }
         }
         val androidMain by getting {
             dependencies {
-                implementation("androidx.appcompat:appcompat:1.6.1")
-                implementation("androidx.activity:activity-compose:1.8.2")
-                implementation("io.ktor:ktor-client-android:2.3.7")
+                api(libs.room.runtime)
+                implementation(libs.appcompat)
+                implementation(libs.activity)
+                implementation(libs.ktor.client.okhttp)
             }
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
-                implementation("io.ktor:ktor-client-cio:2.3.7")
-                implementation("net.java.dev.jna:jna:5.13.0")
+                implementation(libs.ktor.client.cio)
+                implementation(libs.jna)
+            }
+        }
+    }
+    
+    targets.all {
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    freeCompilerArgs.add("-Xexpect-actual-classes")
+                }
             }
         }
     }
 }
 
-android {
-    namespace = "com.metrolist.shared"
-    compileSdk = 34
-    defaultConfig {
-        minSdk = 24
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
+dependencies {
+    add("kspAndroid", libs.room.compiler)
+    add("kspDesktop", libs.room.compiler)
+    add("kspCommonMainMetadata", libs.room.compiler)
+}
+
+ksp {
+    arg("room.schemaLocation", "${projectDir}/schemas")
 }

@@ -2,6 +2,7 @@ package com.metrolist.desktop.ui.screens
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,6 +33,12 @@ import com.metrolist.desktop.ui.components.YTListItem
 
 @Composable
 fun ArtistScreen(colorScheme: ColorScheme) {
+    // Show section detail view when a "See all" was clicked
+    if (AppState.artistSectionTitle != null) {
+        ArtistSectionScreen(colorScheme)
+        return
+    }
+
     if (AppState.isArtistLoading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = colorScheme.primary)
@@ -238,12 +245,30 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                 if (sectionTitle == "header") return@forEach
                 item(key = sectionTitle) {
                     Column(modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)) {
-                        Text(
-                            sectionTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colorScheme.onSurface
-                        )
+                        // Section header row — clickable "See all" when a browseId exists
+                        val browseLink = AppState.artistSectionBrowseIds[sectionTitle]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                sectionTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colorScheme.onSurface
+                            )
+                            if (browseLink?.first != null) {
+                                Text(
+                                    "See all",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        AppState.fetchArtistSection(sectionTitle, browseLink.first!!, browseLink.second)
+                                    }
+                                )
+                            }
+                        }
                         Spacer(Modifier.height(12.dp))
 
                         if (sectionTitle == "Songs") {
@@ -278,3 +303,57 @@ fun ArtistScreen(colorScheme: ColorScheme) {
     }
 }
 
+@Composable
+private fun ArtistSectionScreen(colorScheme: ColorScheme) {
+    val sectionTitle = AppState.artistSectionTitle ?: return
+    val items = AppState.artistSectionItems
+    val loading = AppState.isArtistSectionLoading
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { AppState.clearArtistSection() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colorScheme.onSurface)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = sectionTitle,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onSurface
+            )
+        }
+        HorizontalDivider(color = colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+        if (loading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = colorScheme.primary)
+            }
+        } else if (items.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No items found", color = colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(items) { item ->
+                    YTListItem(item, colorScheme) {
+                        when (item) {
+                            is SongItem -> AppState.playTrack(item)
+                            is ArtistItem -> { AppState.clearArtistSection(); AppState.fetchArtistData(item.id) }
+                            is AlbumItem -> AppState.fetchAlbumData(item.id)
+                            is PlaylistItem -> AppState.fetchPlaylistData(item.id)
+                            else -> {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

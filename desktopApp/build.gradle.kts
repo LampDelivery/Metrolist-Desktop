@@ -21,7 +21,8 @@ if (localPropertiesFile.exists()) {
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose")
-    kotlin("plugin.serialization") version "1.9.24"
+    kotlin("plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 group = "com.metrolist"
@@ -43,12 +44,14 @@ dependencies {
     implementation(compose.runtime)
 
     implementation("com.materialkolor:material-kolor:1.7.1")
-    implementation("sh.calvin.reorderable:reorderable:2.3.1")
-    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
-    implementation("net.java.dev.jna:jna:5.13.0")
-    implementation("net.java.dev.jna:jna-platform:5.13.0")
+    
+    // Updated versions for March 2026/Kotlin 2.3.10 era
+    implementation("sh.calvin.reorderable:reorderable:3.0.0")
+    implementation("org.xerial:sqlite-jdbc:3.48.0.0")
+    implementation("net.java.dev.jna:jna:5.18.1")
+    implementation("net.java.dev.jna:jna-platform:5.18.1")
     implementation("dev.firstdark.discordrpc:discord-rpc:1.0.3")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.code.gson:gson:2.11.0")
     
     implementation("org.openjfx:javafx-base:$javafxVersion:$platform")
     implementation("org.openjfx:javafx-graphics:$javafxVersion:$platform")
@@ -57,30 +60,19 @@ dependencies {
     implementation("org.openjfx:javafx-web:$javafxVersion:$platform")
     implementation("org.openjfx:javafx-media:$javafxVersion:$platform")
     
-    implementation("io.ktor:ktor-client-core:2.3.7")
-    implementation("io.ktor:ktor-client-cio:2.3.7")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-     kotlinOptions {
-         jvmTarget = "21"
-         freeCompilerArgs += listOf(
-             "-opt-in=kotlin.RequiresOptIn"
-         )
-     }
+    val ktorVersion = "3.4.1"
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
 }
 
 // Generate a Config file similar to Android's BuildConfig
 val generateConfig by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/source/config/main/kotlin").get().asFile
 
-    // Resolve keys via providers so Gradle tracks them as task inputs and
-    // invalidates the task whenever a value changes.
-    // Priority: -P flag (CI) → env var → local.properties → empty
     val lastFmKeyProvider = providers.gradleProperty("LASTFM_API_KEY")
         .filter { it.isNotEmpty() }
         .orElse(providers.environmentVariable("LASTFM_API_KEY").filter { it.isNotEmpty() })
@@ -93,18 +85,11 @@ val generateConfig by tasks.registering {
     inputs.property("lastFmKey", lastFmKeyProvider)
     inputs.property("lastFmSecret", lastFmSecretProvider)
     outputs.dir(outputDir)
-    // Never restore this task from the build cache — secrets must always be freshly injected.
     outputs.cacheIf { false }
 
     doLast {
         val lastFmKey = lastFmKeyProvider.get().trim()
         val lastFmSecret = lastFmSecretProvider.get().trim()
-
-        if (lastFmKey.isEmpty()) {
-            logger.warn("Warning: LASTFM_API_KEY not found. Last.fm features will be disabled.")
-        } else {
-            println("Configured Last.fm with Key: ${lastFmKey.take(4)}...")
-        }
 
         val configFile = outputDir.resolve("com/metrolist/desktop/BuildConfig.kt")
         configFile.parentFile.mkdirs()
@@ -114,12 +99,12 @@ val generateConfig by tasks.registering {
             object BuildConfig {
                 const val LASTFM_API_KEY = "${lastFmKey}"
                 const val LASTFM_SECRET = "${lastFmSecret}"
+                const val APP_VERSION = "1.0.0"
             }
         """.trimIndent())
     }
 }
 
-// Task to prepare the resources directory for native distributions
 val syncExternalResources by tasks.registering(Sync::class) {
     val destination = layout.buildDirectory.dir("native-resources")
     into(destination)
@@ -138,8 +123,6 @@ val syncExternalResources by tasks.registering(Sync::class) {
     }
 }
 
-// Ensure the desktop app runs with settings that work reliably on Linux Wayland compositors
-// by forcing the GTK/JavaFX stack to use the X11 backend (via Xwayland) and a safe Skiko render API.
 tasks.withType<JavaExec>().configureEach {
     if (platform == "linux") {
         environment("LC_NUMERIC", "C")
@@ -153,8 +136,6 @@ compose.desktop {
     application {
         mainClass = "com.metrolist.desktop.MainKt"
         nativeDistributions {
-            // targetFormats must only list formats valid for the current OS —
-            // Compose Desktop validates this at configuration time, not just at task execution.
             val formats = when (platform) {
                 "win"  -> arrayOf(TargetFormat.Msi)
                 "mac"  -> arrayOf(TargetFormat.Dmg)
@@ -167,25 +148,22 @@ compose.desktop {
             copyright = "© 2026 Metrolist"
             vendor = "MetrolistGroup"
 
-            // Declare only the JDK modules we actually need — jlink strips everything else,
-            // producing a significantly smaller bundled JRE.
             modules(
                 "java.base",
-                "java.desktop",          // AWT/Swing — required for JFXPanel/SwingPanel
-                "java.logging",          // java.util.logging
-                "java.management",       // ManagementFactory — needed by Discord RPC native lib
-                "java.naming",           // JNDI — used by JDBC driver SPI lookup
-                "java.net.http",         // HttpClient — used by Ktor and other networking
-                "java.prefs",            // Java Preferences API — settings persistence
-                "java.sql",              // JDBC — required by SQLite / HistoryRepository
-                "java.xml",             // XML parsing — used by various libs
-                "jdk.crypto.ec",         // EC cipher suites — required for TLS with YouTube
-                "jdk.jsobject",          // JSObject — required by WebEngine.executeScript() in sign-in WebView
-                "jdk.unsupported",       // sun.misc.Unsafe and other internal APIs
-                "jdk.unsupported.desktop" // SwingInterOpUtils — fixes JavaFX-Swing crash on Linux
+                "java.desktop",
+                "java.logging",
+                "java.management",
+                "java.naming",
+                "java.net.http",
+                "java.prefs",
+                "java.sql",
+                "java.xml",
+                "jdk.crypto.ec",
+                "jdk.jsobject",
+                "jdk.unsupported",
+                "jdk.unsupported.desktop"
             )
 
-            // JavaFX requires access to internals that are restricted by the module system
             jvmArgs += listOf(
                 "--add-opens=java.base/java.lang=ALL-UNNAMED",
                 "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
@@ -199,10 +177,10 @@ compose.desktop {
                 menu = true
                 shortcut = true
                 iconFile.set(project.file("src/jvmMain/resources/logo.ico"))
+                upgradeUuid = "a2e1b3c4-5d6f-4789-8abc-0d1e2f3a4b5c"
             }
             linux {
                 iconFile.set(project.file("src/jvmMain/resources/logo.png"))
-                // JavaFX/GTK requires C numeric locale; set it via system property as a best-effort
                 jvmArgs += listOf("-Djava.locale.providers=COMPAT,SPI")
             }
             macOS {

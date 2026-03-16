@@ -7,4 +7,5 @@ import kotlinx.serialization.Serializable
 data class SubscribeBody(
     val context: Context,
     val channelIds: List<String>,
+    val params: String? = null,
 )

@@ -57,7 +57,7 @@ import kotlinx.coroutines.launch
 import com.metrolist.shared.model.*
 import com.metrolist.shared.api.lastfm.LastFM
 import com.metrolist.desktop.state.AppState
-import com.metrolist.desktop.state.GlobalYouTubeRepository
+import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.desktop.state.NavItem
 import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*

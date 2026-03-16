@@ -1,6 +1,7 @@
 package com.metrolist.shared.api.innertube.models.response
 
 import com.metrolist.shared.api.innertube.models.Thumbnails
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,7 +19,7 @@ data class PlayerResponse(
     @Serializable
     data class StreamingData(
         val formats: List<Format>? = null,
-        val adaptiveFormats: List<Format>,
+        val adaptiveFormats: List<Format> = emptyList(),
         val expiresInSeconds: Int? = null,
     ) {
         @Serializable
@@ -30,8 +31,11 @@ data class PlayerResponse(
             val width: Int? = null,
             val height: Int? = null,
             val contentLength: Long? = null,
+            val quality: String? = null,
             val audioQuality: String? = null,
             val approxDurationMs: String? = null,
+            val audioSampleRate: Int? = null,
+            val audioChannels: Int? = null,
             val signatureCipher: String? = null,
             val cipher: String? = null,
         ) {
@@ -47,6 +51,7 @@ data class PlayerResponse(
         val author: String? = null,
         val channelId: String? = null,
         val lengthSeconds: String? = null,
+        val musicVideoType: String? = null,
         val viewCount: String? = null,
         val thumbnail: Thumbnails? = null,
     )
