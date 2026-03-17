@@ -1,0 +1,661 @@
+package com.metrolist.desktop.ui.screens.settings
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.metrolist.desktop.state.AppState
+import com.metrolist.desktop.state.ThemeMode
+import com.metrolist.desktop.constants.SliderStyle
+import com.metrolist.desktop.ui.components.EnumDialog
+import com.metrolist.desktop.constants.DefaultThemeColor
+
+@Composable
+fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { AppState.showAppearanceSettings = false }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                "Appearance",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        SettingsGroup(title = "Display", colorScheme = colorScheme) {
+            SettingsToggleWithIcon(
+                title = "Enable high refresh rate",
+                subtitle = "Higher refresh rates provide smoother visual experience",
+                icon = Icons.Outlined.Speed,
+                checked = AppState.enableHighRefreshRate,
+                onCheckedChange = { AppState.toggleHighRefreshRate(it) },
+                colorScheme = colorScheme
+            )
+
+            // Only show dynamic theme when using default color
+            val isUsingDefaultColor = AppState.selectedThemeColor == DefaultThemeColor.value.toLong()
+            if (isUsingDefaultColor) {
+                SettingsToggleWithIcon(
+                    title = "Enable dynamic theme",
+                    subtitle = "Uses colors from album artwork and system accent color",
+                    icon = Icons.Outlined.Palette,
+                    checked = AppState.dynamicTheme,
+                    onCheckedChange = { AppState.toggleDynamicTheme(it) },
+                    colorScheme = colorScheme
+                )
+            }
+
+            SettingsNavigationWithIcon(
+                title = "Theme",
+                subtitle = "Color palette and theme customization",
+                icon = Icons.Outlined.Palette,
+                colorScheme = colorScheme,
+                onClick = { AppState.showThemeSettings = true }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsGroup(title = "Mini-player", colorScheme = colorScheme) {
+            SettingsToggleWithIcon(
+                title = "New mini player design",
+                subtitle = "Enhanced mini-player with improved layout",
+                icon = Icons.Outlined.ViewCompact,
+                checked = AppState.newMiniPlayerDesign,
+                onCheckedChange = { AppState.toggleNewMiniPlayerDesign(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggleWithIcon(
+                title = "Pure black mini-player",
+                subtitle = "Dark theme mini-player uses pure black background",
+                icon = Icons.Outlined.Contrast,
+                checked = AppState.pureBlackMiniPlayer,
+                onCheckedChange = { AppState.togglePureBlackMiniPlayer(it) },
+                colorScheme = colorScheme
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsGroup(title = "Player", colorScheme = colorScheme) {
+            SettingsToggleWithIcon(
+                title = "New player design",
+                subtitle = "Enhanced player interface with modern styling",
+                icon = Icons.Outlined.Palette,
+                checked = AppState.newPlayerDesign,
+                onCheckedChange = { AppState.toggleNewPlayerDesign(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggleWithIcon(
+                title = "Hide player thumbnail",
+                subtitle = "Hide album artwork in the player interface",
+                icon = Icons.Outlined.HideImage,
+                checked = AppState.hidePlayerThumbnail,
+                onCheckedChange = { AppState.toggleHidePlayerThumbnail(it) },
+                colorScheme = colorScheme
+            )
+
+            SettingsToggleWithIcon(
+                title = "Crop album art",
+                subtitle = "Crop album artwork to fit player interface",
+                icon = Icons.Outlined.Crop,
+                checked = AppState.cropAlbumArt,
+                onCheckedChange = { AppState.toggleCropAlbumArt(it) },
+                colorScheme = colorScheme
+            )
+
+            var showPanelSideDialog by remember { mutableStateOf(false) }
+            SettingsNavigationWithIcon(
+                title = "Panel side",
+                subtitle = AppState.playerPanelSide.replaceFirstChar { it.uppercase() },
+                icon = Icons.Outlined.TableRows,
+                colorScheme = colorScheme,
+                onClick = { showPanelSideDialog = true }
+            )
+
+            if (showPanelSideDialog) {
+                EnumDialog(
+                    onDismiss = { showPanelSideDialog = false },
+                    onSelect = {
+                        AppState.updatePlayerPanelSide(it)
+                        showPanelSideDialog = false
+                    },
+                    title = "Panel Side",
+                    current = AppState.playerPanelSide,
+                    values = listOf("right", "left"),
+                    valueText = { it.replaceFirstChar { c -> c.uppercase() } },
+                    valueDescription = { if (it == "right") "Position the panel on the right side" else "Position the panel on the left side" },
+                    colorScheme = colorScheme
+                )
+            }
+
+            SettingsNavigationWithIcon(
+                title = "Slider Style",
+                subtitle = "Choose your preferred slider appearance",
+                icon = Icons.Outlined.Tune,
+                colorScheme = colorScheme,
+                onClick = { AppState.showSliderStyleDialog = true }
+            )
+
+            SettingsToggleWithIcon(
+                title = "Swap player buttons and song info",
+                subtitle = "Places the player controls in the middle and song info on the left",
+                icon = Icons.Outlined.SwapHoriz,
+                checked = AppState.swapPlayerControls,
+                onCheckedChange = { AppState.toggleSwapPlayerControls(it) },
+                colorScheme = colorScheme
+            )
+        }
+
+        // Slider style dialog
+        if (AppState.showSliderStyleDialog) {
+            SliderStyleDialog(
+                colorScheme = colorScheme,
+                onDismiss = { AppState.showSliderStyleDialog = false },
+                onStyleSelected = { style ->
+                    AppState.updateSliderStyle(style)
+                    AppState.showSliderStyleDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ThemeSettingsScreen(colorScheme: ColorScheme) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { AppState.showThemeSettings = false }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                "Theme & Colors",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        // Theme preview mockup (like Android app)
+        SettingsGroup(title = "Preview", colorScheme = colorScheme) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                ThemeMockup(
+                    themeMode = AppState.themeMode,
+                    selectedThemeColor = androidx.compose.ui.graphics.Color(AppState.selectedThemeColor.toULong()),
+                    colorScheme = colorScheme
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsGroup(title = "Theme Mode", colorScheme = colorScheme) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ThemeModeButton(
+                    mode = ThemeMode.AUTO,
+                    isSelected = AppState.themeMode == ThemeMode.AUTO,
+                    colorScheme = colorScheme,
+                    onClick = { AppState.themeMode = ThemeMode.AUTO }
+                )
+                ThemeModeButton(
+                    mode = ThemeMode.LIGHT,
+                    isSelected = AppState.themeMode == ThemeMode.LIGHT,
+                    colorScheme = colorScheme,
+                    onClick = { AppState.themeMode = ThemeMode.LIGHT }
+                )
+                ThemeModeButton(
+                    mode = ThemeMode.DARK,
+                    isSelected = AppState.themeMode == ThemeMode.DARK,
+                    colorScheme = colorScheme,
+                    onClick = { AppState.themeMode = ThemeMode.DARK }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsGroup(title = "Color Palette", colorScheme = colorScheme) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Choose your preferred color scheme",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Color palette grid (like Android app)
+                val colors = listOf(
+                    "Dynamic" to androidx.compose.ui.graphics.Color.Transparent,
+                    "Red" to androidx.compose.ui.graphics.Color(0xFFED5564),
+                    "Blue" to androidx.compose.ui.graphics.Color(0xFF1E88E5),
+                    "Green" to androidx.compose.ui.graphics.Color(0xFF43A047),
+                    "Purple" to androidx.compose.ui.graphics.Color(0xFF8E24AA),
+                    "Orange" to androidx.compose.ui.graphics.Color(0xFFFB8C00)
+                )
+
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(colors) { (name, color) ->
+                        PaletteItem(
+                            name = name,
+                            color = color,
+                            isSelected = if (name == "Dynamic") {
+                                AppState.selectedThemeColor == DefaultThemeColor.value.toLong()
+                            } else {
+                                AppState.selectedThemeColor == color.value.toLong()
+                            },
+                            colorScheme = colorScheme,
+                            onClick = {
+                                if (name == "Dynamic") {
+                                    AppState.setSelectedThemeColor(DefaultThemeColor.value)
+                                    AppState.toggleDynamicTheme(true)
+                                } else {
+                                    AppState.setSelectedThemeColor(color.value)
+                                    AppState.toggleDynamicTheme(false)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeMockup(
+    themeMode: ThemeMode,
+    selectedThemeColor: androidx.compose.ui.graphics.Color,
+    colorScheme: ColorScheme
+) {
+    Card(
+        modifier = Modifier
+            .widthIn(max = 500.dp)
+            .fillMaxWidth()
+            .height(280.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Title bar — matches actual TopBar layout
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Metrolist",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Box(Modifier.size(8.dp).background(colorScheme.error.copy(alpha = 0.8f), CircleShape))
+                        Box(Modifier.size(8.dp).background(colorScheme.tertiary.copy(alpha = 0.8f), CircleShape))
+                        Box(Modifier.size(8.dp).background(colorScheme.primary.copy(alpha = 0.8f), CircleShape))
+                    }
+                }
+            }
+
+            // App body — sidebar + content
+            Row(modifier = Modifier.weight(1f)) {
+                // Navigation sidebar (NavigationRail style)
+                Column(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .fillMaxHeight()
+                        .background(colorScheme.surfaceContainerLow)
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val navIcons = listOf(
+                        Icons.Outlined.Home,
+                        Icons.Outlined.LibraryMusic,
+                        Icons.Outlined.History,
+                        Icons.Outlined.BarChart
+                    )
+                    navIcons.forEachIndexed { index, icon ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .background(
+                                    if (index == 0) colorScheme.secondaryContainer
+                                    else colorScheme.surfaceContainerLow,
+                                    RoundedCornerShape(10.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                tint = if (index == 0) colorScheme.onSecondaryContainer
+                                       else colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Main content area
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(colorScheme.surface)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Page heading
+                    Box(
+                        Modifier.width(72.dp).height(7.dp)
+                            .background(colorScheme.onSurface.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    // Song rows
+                    val titleWidths = listOf(80.dp, 68.dp, 90.dp, 60.dp)
+                    val subtitleWidths = listOf(50.dp, 44.dp, 56.dp, 38.dp)
+                    repeat(4) { index ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(30.dp)
+                                .background(
+                                    if (index == 0) colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                    else colorScheme.surface,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                Modifier.size(18.dp).background(
+                                    if (index == 0) colorScheme.primary.copy(alpha = 0.6f)
+                                    else colorScheme.surfaceVariant,
+                                    RoundedCornerShape(3.dp)
+                                )
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Box(
+                                    Modifier.width(titleWidths[index]).height(4.dp).background(
+                                        if (index == 0) colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        else colorScheme.onSurface.copy(alpha = 0.65f),
+                                        RoundedCornerShape(2.dp)
+                                    )
+                                )
+                                Box(
+                                    Modifier.width(subtitleWidths[index]).height(3.dp)
+                                        .background(colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom player bar — album art + track info on left, prev/play/next on right
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .background(colorScheme.surfaceContainerHigh)
+            ) {
+                // Progress bar
+                Box(
+                    Modifier.fillMaxWidth().height(2.dp)
+                        .background(colorScheme.surfaceContainerHighest)
+                ) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(0.38f).background(colorScheme.primary))
+                }
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            Modifier.size(26.dp)
+                                .background(colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Box(Modifier.width(52.dp).height(4.dp).background(colorScheme.onSurface.copy(alpha = 0.8f), RoundedCornerShape(2.dp)))
+                            Box(Modifier.width(36.dp).height(3.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(2.dp)))
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Outlined.SkipPrevious, null, tint = colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Outlined.PlayArrow, null, tint = colorScheme.onPrimary, modifier = Modifier.size(14.dp))
+                            }
+                        }
+                        Icon(Icons.Outlined.SkipNext, null, tint = colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeModeButton(
+    mode: ThemeMode,
+    isSelected: Boolean,
+    colorScheme: ColorScheme,
+    onClick: () -> Unit
+) {
+    val borderWidth by animateFloatAsState(
+        targetValue = if (isSelected) 3f else 1f,
+        animationSpec = tween(200)
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = tween(200)
+    )
+
+    val backgroundColor = when (mode) {
+        ThemeMode.LIGHT -> androidx.compose.ui.graphics.Color.White
+        ThemeMode.DARK -> androidx.compose.ui.graphics.Color.Black
+        ThemeMode.AUTO -> colorScheme.surface
+    }
+
+    val borderColor = if (isSelected) colorScheme.primary else colorScheme.outline
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(CircleShape)
+                .background(backgroundColor)
+                .border(borderWidth.dp, borderColor, CircleShape)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            when (mode) {
+                ThemeMode.AUTO -> {
+                    Icon(
+                        Icons.Outlined.Sync,
+                        contentDescription = "Auto",
+                        tint = colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                ThemeMode.LIGHT -> {
+                    Icon(
+                        Icons.Outlined.LightMode,
+                        contentDescription = "Light",
+                        tint = androidx.compose.ui.graphics.Color.Black,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                ThemeMode.DARK -> {
+                    Icon(
+                        Icons.Outlined.DarkMode,
+                        contentDescription = "Dark",
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = when (mode) {
+                ThemeMode.AUTO -> "Auto"
+                ThemeMode.LIGHT -> "Light"
+                ThemeMode.DARK -> "Dark"
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun PaletteItem(
+    name: String,
+    color: androidx.compose.ui.graphics.Color,
+    isSelected: Boolean,
+    colorScheme: ColorScheme,
+    onClick: () -> Unit
+) {
+    val cornerRadius by animateFloatAsState(
+        targetValue = if (isSelected) 12f else 24f,
+        animationSpec = tween(200)
+    )
+
+    val borderWidth by animateFloatAsState(
+        targetValue = if (isSelected) 3f else 1f,
+        animationSpec = tween(200)
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.08f else 1f,
+        animationSpec = tween(200)
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(cornerRadius.dp))
+                .background(if (name == "Dynamic") colorScheme.primary else color)
+                .border(
+                    borderWidth.dp,
+                    if (isSelected) colorScheme.primary else colorScheme.outline,
+                    RoundedCornerShape(cornerRadius.dp)
+                )
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (name == "Dynamic") {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = "Dynamic",
+                    tint = colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}

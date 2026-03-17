@@ -5,6 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -22,12 +25,23 @@ import com.metrolist.shared.api.lastfm.LastFM
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.metrolist.desktop.ui.screens.settings.*
 
 @Composable
 fun IntegrationsScreen(colorScheme: ColorScheme) {
     Column(modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())) {
-        Text("Integrations", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { AppState.showIntegrations = false }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text("Integrations",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp))
+        }
 
         DiscordSection(colorScheme)
 
@@ -209,7 +223,14 @@ private fun DiscordButtonConfig(
             )
             Switch(
                 checked = visible,
-                onCheckedChange = onVisibleChange
+                onCheckedChange = onVisibleChange,
+                thumbContent = {
+                    Icon(
+                        imageVector = if (visible) Icons.Filled.Check else Icons.Filled.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
             )
         }
 

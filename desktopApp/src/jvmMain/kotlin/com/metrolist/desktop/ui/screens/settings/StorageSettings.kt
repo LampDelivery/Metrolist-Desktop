@@ -1,6 +1,8 @@
 package com.metrolist.desktop.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,7 +16,7 @@ import com.metrolist.desktop.state.AppState
 @Composable
 fun StorageSettingsScreen(colorScheme: ColorScheme) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp)
+        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
@@ -31,8 +33,20 @@ fun StorageSettingsScreen(colorScheme: ColorScheme) {
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Storage Settings Placeholder", style = MaterialTheme.typography.bodyLarge)
+        SettingsGroup(title = "Cache Management", colorScheme = colorScheme) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Cache and storage management",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    "Coming soon - storage management features will be available in a future update",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colorScheme.onSurface
+                )
+            }
         }
     }
 }

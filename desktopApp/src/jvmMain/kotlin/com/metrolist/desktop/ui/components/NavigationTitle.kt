@@ -2,6 +2,7 @@ package com.metrolist.desktop.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
@@ -65,12 +66,12 @@ fun NavigationTitle(
         onPlayAllClick?.let { playAllClick ->
             Button(
                 onClick = playAllClick,
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
                 modifier = Modifier.height(32.dp)
             ) {
                 Text(

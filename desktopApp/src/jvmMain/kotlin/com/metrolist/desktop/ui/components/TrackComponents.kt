@@ -79,6 +79,15 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
 
     val isCurrentTrack = item is SongItem && AppState.currentTrack?.id == item.id
 
+    // Resolve thumbnail with source priority for ArtistItem
+    val thumbnail = remember(item, AppState.artistIconSource) {
+        if (item is ArtistItem) {
+            val cacheKey = item.id
+            val cached = AppState.artistIconCache[cacheKey]
+            cached ?: item.thumbnail
+        } else item.thumbnail
+    }
+
     Box {
         Column(
             modifier = Modifier
@@ -99,7 +108,7 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
         ) {
             Box {
                 AsyncImage(
-                    url = item.thumbnail ?: "",
+                    url = thumbnail ?: "",
                     modifier = Modifier.size(160.dp).shadow(8.dp, shape),
                     shape = shape
                 )
@@ -236,6 +245,15 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
 
     val isCurrentTrack = item is SongItem && AppState.currentTrack?.id == item.id
 
+    // Resolve thumbnail with source priority for ArtistItem
+    val thumbnail = remember(item, AppState.artistIconSource) {
+        if (item is ArtistItem) {
+            val cacheKey = item.id
+            val cached = AppState.artistIconCache[cacheKey]
+            cached ?: item.thumbnail
+        } else item.thumbnail
+    }
+
     Box {
         Row(
             modifier = Modifier
@@ -258,7 +276,7 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box {
-                AsyncImage(url = item.thumbnail ?: "", modifier = Modifier.size(ListThumbnailSize), shape = shape)
+                AsyncImage(url = thumbnail ?: "", modifier = Modifier.size(ListThumbnailSize), shape = shape)
                 if (isCurrentTrack) {
                     Box(
                         modifier = Modifier.matchParentSize().clip(shape).background(Color.Black.copy(alpha = 0.4f)),

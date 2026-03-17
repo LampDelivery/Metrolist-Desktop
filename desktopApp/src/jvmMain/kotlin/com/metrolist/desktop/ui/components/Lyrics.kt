@@ -92,7 +92,7 @@ fun parseLrc(lyrics: String): List<LyricsEntry> {
 
             rawText = rawText.trim()
 
-            if (rawText.contains("<") && !rawText.startsWith("<")) {
+            if (wordTagRegex.containsMatchIn(rawText)) {
                 // Inline rich-sync: [mm:ss.ms]<mm:ss.ms> word <mm:ss.ms> word …
                 val wordMatches = wordTagRegex.findAll(rawText).toList()
                 val words = wordMatches.mapIndexedNotNull { idx, wm ->

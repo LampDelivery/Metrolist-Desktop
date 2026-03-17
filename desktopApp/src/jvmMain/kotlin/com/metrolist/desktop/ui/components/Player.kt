@@ -263,7 +263,13 @@ fun ExpandedPlayerView() {
                 }
             }
         } else {
+            val panelSide = AppState.playerPanelSide
             Row(modifier = Modifier.fillMaxSize().padding(top = 48.dp)) {
+                if (panelSide == "left") {
+                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = Color.Transparent) {
+                        ExpandedTabsContent()
+                    }
+                }
                 Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                     val artSize = (width * 0.35f).coerceIn(300.dp, 480.dp)
                     AsyncImage(
@@ -273,12 +279,10 @@ fun ExpandedPlayerView() {
                         extractColor = true
                     )
                 }
-
-                Surface(
-                    modifier = Modifier.width(450.dp).fillMaxHeight(),
-                    color = Color.Transparent
-                ) {
-                    ExpandedTabsContent()
+                if (panelSide != "left") {
+                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = Color.Transparent) {
+                        ExpandedTabsContent()
+                    }
                 }
             }
         }

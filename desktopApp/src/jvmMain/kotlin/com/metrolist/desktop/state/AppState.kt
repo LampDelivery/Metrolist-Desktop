@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.metrolist.shared.api.LyricsWithProvider
+import com.metrolist.shared.api.lastfm.LastFM
 import com.metrolist.shared.model.*
 import com.metrolist.shared.playback.MusicPlayer
 import com.metrolist.shared.playback.MusicQueue
@@ -27,8 +28,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import java.awt.Desktop
 import java.net.URI
 import java.util.prefs.Preferences
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 
 enum class ThemeMode {
     LIGHT,
@@ -37,6 +41,193 @@ enum class ThemeMode {
 }
 
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
+
+// Language and country mappings
+const val SYSTEM_DEFAULT = "SYSTEM_DEFAULT"
+
+val LanguageCodeToName = mapOf(
+    "SYSTEM_DEFAULT" to "System Default",
+    "af" to "Afrikaans",
+    "ar" to "العربية",
+    "as" to "অসমীয়া",
+    "az" to "Azərbaycan",
+    "bg" to "Български",
+    "bn" to "বাংলা",
+    "ca" to "Català",
+    "cs" to "Čeština",
+    "da" to "Dansk",
+    "de" to "Deutsch",
+    "en" to "English (US)",
+    "en-GB" to "English (UK)",
+    "es" to "Español (España)",
+    "es-419" to "Español (Latinoamérica)",
+    "et" to "Eesti",
+    "eu" to "Euskara",
+    "fa" to "فارسی",
+    "fi" to "Suomi",
+    "fil" to "Filipino",
+    "fr" to "Français",
+    "fr-CA" to "Français (Canada)",
+    "gl" to "Galego",
+    "gu" to "ગુજરાતી",
+    "he" to "עברית",
+    "hi" to "हिन्दी",
+    "hr" to "Hrvatski",
+    "hu" to "Magyar",
+    "id" to "Bahasa Indonesia",
+    "is" to "Íslenska",
+    "it" to "Italiano",
+    "ja" to "日本語",
+    "kk" to "Қазақ Тілі",
+    "km" to "ខ្មែរ",
+    "kn" to "ಕನ್ನಡ",
+    "ko" to "한국어",
+    "lt" to "Lietuvių",
+    "mr" to "মরাठी",
+    "ms" to "Bahasa Malaysia",
+    "my" to "ဗမာ",
+    "nl" to "Nederlands",
+    "no" to "Norsk",
+    "or" to "Odia",
+    "pa" to "ਪੰਜਾਬੀ",
+    "pl" to "Polski",
+    "pt" to "Português (Brasil)",
+    "pt-PT" to "Português",
+    "ro" to "Română",
+    "ru" to "Русский",
+    "sk" to "Slovenčina",
+    "sl" to "Slovenščina",
+    "sq" to "Shqip",
+    "sr" to "Срਪਸਕੀ",
+    "sv" to "Svenska",
+    "sw" to "Kiswahili",
+    "ta" to "தமிழ்",
+    "te" to "తెలుగు",
+    "th" to "ไทย",
+    "tr" to "Türkçe",
+    "uk" to "Українська",
+    "uz" to "O'zbe",
+    "vi" to "Tiếng Việt",
+    "zh-CN" to "中文 (简体)",
+    "zh-HK" to "中文 (香港)",
+    "zh-TW" to "中文 (繁體)",
+    "zu" to "IsiZulu"
+)
+
+val CountryCodeToName = mapOf(
+    "SYSTEM_DEFAULT" to "System Default",
+    "AE" to "United Arab Emirates",
+    "AR" to "Argentina",
+    "AT" to "Austria",
+    "AU" to "Australia",
+    "AZ" to "Azerbaijan",
+    "BA" to "Bosnia and Herzegovina",
+    "BD" to "Bangladesh",
+    "BE" to "Belgium",
+    "BG" to "Bulgaria",
+    "BH" to "Bahrain",
+    "BO" to "Bolivia",
+    "BR" to "Brazil",
+    "BY" to "Belarus",
+    "CA" to "Canada",
+    "CH" to "Switzerland",
+    "CL" to "Chile",
+    "CM" to "Cameroon",
+    "CN" to "China",
+    "CO" to "Colombia",
+    "CR" to "Costa Rica",
+    "CZ" to "Czechia",
+    "DE" to "Germany",
+    "DK" to "Denmark",
+    "DO" to "Dominican Republic",
+    "DZ" to "Algeria",
+    "EC" to "Ecuador",
+    "EE" to "Estonia",
+    "EG" to "Egypt",
+    "ES" to "Spain",
+    "FI" to "Finland",
+    "FR" to "France",
+    "GB" to "United Kingdom",
+    "GE" to "Georgia",
+    "GH" to "Ghana",
+    "GR" to "Greece",
+    "GT" to "Guatemala",
+    "HK" to "Hong Kong",
+    "HN" to "Honduras",
+    "HR" to "Croatia",
+    "HU" to "Hungary",
+    "ID" to "Indonesia",
+    "IE" to "Ireland",
+    "IL" to "Israel",
+    "IN" to "India",
+    "IQ" to "Iraq",
+    "IS" to "Iceland",
+    "IT" to "Italy",
+    "JM" to "Jamaica",
+    "JO" to "Jordan",
+    "JP" to "Japan",
+    "KE" to "Kenya",
+    "KH" to "Cambodia",
+    "KR" to "South Korea",
+    "KW" to "Kuwait",
+    "KZ" to "Kazakhstan",
+    "LB" to "Lebanon",
+    "LI" to "Liechtenstein",
+    "LK" to "Sri Lanka",
+    "LT" to "Lithuania",
+    "LU" to "Luxembourg",
+    "LV" to "Latvia",
+    "LY" to "Libya",
+    "MA" to "Morocco",
+    "MD" to "Moldova",
+    "ME" to "Montenegro",
+    "MK" to "Macedonia",
+    "MN" to "Mongolia",
+    "MT" to "Malta",
+    "MX" to "Mexico",
+    "MY" to "Malaysia",
+    "NG" to "Nigeria",
+    "NI" to "Nicaragua",
+    "NL" to "Netherlands",
+    "NO" to "Norway",
+    "NP" to "Nepal",
+    "NZ" to "New Zealand",
+    "OM" to "Oman",
+    "PA" to "Panama",
+    "PE" to "Peru",
+    "PG" to "Papua New Guinea",
+    "PH" to "Philippines",
+    "PK" to "Pakistan",
+    "PL" to "Poland",
+    "PR" to "Puerto Rico",
+    "PT" to "Portugal",
+    "PY" to "Paraguay",
+    "QA" to "Qatar",
+    "RO" to "Romania",
+    "RS" to "Serbia",
+    "RU" to "Russia",
+    "SA" to "Saudi Arabia",
+    "SE" to "Sweden",
+    "SG" to "Singapore",
+    "SI" to "Slovenia",
+    "SK" to "Slovakia",
+    "SN" to "Senegal",
+    "SV" to "El Salvador",
+    "TH" to "Thailand",
+    "TN" to "Tunisia",
+    "TR" to "Turkey",
+    "TW" to "Taiwan",
+    "TZ" to "Tanzania",
+    "UA" to "Ukraine",
+    "UG" to "Uganda",
+    "US" to "United States",
+    "UY" to "Uruguay",
+    "VE" to "Venezuela",
+    "VN" to "Vietnam",
+    "YE" to "Yemen",
+    "ZA" to "South Africa",
+    "ZW" to "Zimbabwe"
+)
 
 object AppState {
     val client get() = GlobalInnerTube.client
@@ -86,6 +277,21 @@ object AppState {
     var artistIsSubscribed by mutableStateOf(false)
     var topBarScrollOffset by mutableStateOf(Int.MAX_VALUE)
 
+    // Artist photos and source
+    var artistPhotos by mutableStateOf<List<ArtistPhoto>>(emptyList())
+    var isArtistPhotosLoading by mutableStateOf(false)
+    var artistBannerSource by mutableStateOf(runCatching { ArtistSource.valueOf(prefs.get("ARTIST_BANNER_SOURCE", ArtistSource.YOUTUBE.name)) }.getOrDefault(ArtistSource.YOUTUBE))
+    var artistIconSource by mutableStateOf(runCatching { ArtistSource.valueOf(prefs.get("ARTIST_ICON_SOURCE", ArtistSource.YOUTUBE.name)) }.getOrDefault(ArtistSource.YOUTUBE))
+    // Transient per-artist: which specific Last.fm photo is actively shown as banner (null = none selected)
+    var selectedLastFmPhotoUrl by mutableStateOf<String?>(null)
+    var lastFmPhotoAutoCycle by mutableStateOf(prefs.getBoolean("LASTFM_PHOTO_AUTO_CYCLE", false))
+    var lastFmPhotoCycleInterval by mutableStateOf(prefs.getFloat("LASTFM_PHOTO_CYCLE_INTERVAL", 6f))
+    private var autoCycleJob: Job? = null
+
+    // Checkmark display control: show briefly when manually selected, hide during auto-cycle
+    var recentlySelectedPhotoUrl by mutableStateOf<String?>(null)
+    private var checkmarkHideJob: Job? = null
+
     // Artist section "See all" view
     var artistSectionTitle by mutableStateOf<String?>(null)
     var artistSectionItems by mutableStateOf<List<YTItem>>(emptyList())
@@ -118,10 +324,10 @@ object AppState {
     var discordRpcButton2Visible by mutableStateOf(prefs.getBoolean("DISCORD_RPC_BUTTON2_VISIBLE", true))
     var shuffleEnabled by mutableStateOf(false)
     var repeatMode by mutableStateOf(RepeatMode.OFF)
-    
+
     var swapPlayerControls by mutableStateOf(prefs.getBoolean("SWAP_PLAYER_CONTROLS", false))
     var animatedGradient by mutableStateOf(prefs.getBoolean("ANIMATED_GRADIENT", false))
-    
+
     var currentLyrics by mutableStateOf<String?>(null)
     var isLyricsLoading by mutableStateOf(false)
     var currentLyricsProvider by mutableStateOf<String?>(null)
@@ -138,10 +344,11 @@ object AppState {
     var discordRpcShowIdle by mutableStateOf(prefs.getBoolean("DISCORD_RPC_SHOW_IDLE", true))
     var discordRpcUseDetails by mutableStateOf(prefs.getBoolean("DISCORD_RPC_USE_DETAILS", true))
     var discordRpcShowButtons by mutableStateOf(prefs.getBoolean("DISCORD_RPC_SHOW_BUTTONS", true))
-    var discordRpcButton1Text by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON1_TEXT", "Listen on YouTube Music"))
-    var discordRpcButton2Text by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON2_TEXT", "Visit Metrolist"))
     var discordRpcAppId by mutableStateOf(prefs.get("DISCORD_RPC_APP_ID", ""))
     var discordRpcActivityType by mutableStateOf(prefs.get("DISCORD_RPC_ACTIVITY_TYPE", "LISTENING"))
+    var discordRpcButton1Text by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON1_TEXT", "Listen on YouTube Music"))
+    var discordRpcButton2Text by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON2_TEXT", "Visit Metrolist"))
+    var discordRpcAppIdPref by mutableStateOf(prefs.get("DISCORD_RPC_APP_ID", "")) // duplicate appId workaround
     var discordRpcButton1Url by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON1_URL", "https://music.youtube.com/watch?v={video_id}"))
     var discordRpcButton2Url by mutableStateOf(prefs.get("DISCORD_RPC_BUTTON2_URL", "https://github.com/MetrolistGroup/Metrolist"))
 
@@ -227,24 +434,21 @@ object AppState {
                     val firstArtist = song.artists.firstOrNull()
                     if (firstArtist != null) {
                         val existingThumb = firstArtist.thumbnail
-                        if (existingThumb != null) {
-                            cachedArtistIcon = existingThumb
-                        } else {
-                            scope.launch {
-                                val artistId = firstArtist.id
-                                val cacheKey = artistId ?: firstArtist.name
-                                val icon = artistIconCache[cacheKey]
-                                    ?: if (!artistId.isNullOrEmpty()) {
-                                        // Kizzy approach: browse artist page by channel ID for real YTM thumbnail
-                                        GlobalYouTubeRepository.instance.fetchArtistThumbnail(artistId)
-                                            ?.also { artistIconCache[cacheKey] = it }
-                                    } else if (firstArtist.name.isNotBlank()) {
-                                        GlobalYouTubeRepository.instance.fetchArtistIcon(firstArtist.name)
-                                            ?.also { artistIconCache[cacheKey] = it }
-                                    } else null
-                                cachedArtistIcon = icon
-                                updateDiscordRpc()
-                            }
+                        
+                        // Icon Resolution Priority: Source Preference -> Explicit Selection -> Default Thumbnail
+                        scope.launch {
+                            val artistId = firstArtist.id
+                            val cacheKey = artistId ?: firstArtist.name
+                            
+                            val icon = when (artistIconSource) {
+                                ArtistSource.YOUTUBE -> existingThumb ?: (if (!artistId.isNullOrEmpty()) GlobalYouTubeRepository.instance.fetchArtistThumbnail(artistId) else null)
+                                ArtistSource.ITUNES -> GlobalYouTubeRepository.instance.fetchArtistIcon(firstArtist.name)
+                                ArtistSource.LASTFM -> fetchLastFmIcon(firstArtist.name)
+                                ArtistSource.SPOTIFY -> fetchSpotifyIcon(firstArtist.name)
+                            } ?: existingThumb
+                            
+                            cachedArtistIcon = icon
+                            updateDiscordRpc()
                         }
                     }
                     fetchLyrics(song)
@@ -341,6 +545,18 @@ object AppState {
 
         // Load play history on startup
         refreshHistory()
+    }
+
+    private suspend fun fetchLastFmIcon(name: String): String? {
+        return LastFM.getArtistInfo(client, name)?.get("image")?.jsonArray?.lastOrNull()?.jsonObject?.get("#text")?.jsonPrimitive?.contentOrNull
+    }
+
+    private suspend fun fetchSpotifyIcon(name: String): String? {
+        return try {
+            val response = client.get("https://open.spotify.com/search/${name.replace(" ", "%20")}/artists").bodyAsText()
+            val regex = Regex("https://i.scdn.co/image/[a-z0-9]+")
+            regex.find(response)?.value
+        } catch (_: Exception) { null }
     }
 
     private fun isNewerVersion(latest: String, current: String): Boolean {
@@ -569,10 +785,68 @@ object AppState {
     var newPlayerDesign by mutableStateOf(prefs.getBoolean("NEW_PLAYER_DESIGN", true))
     var hidePlayerThumbnail by mutableStateOf(prefs.getBoolean("HIDE_PLAYER_THUMBNAIL", false))
     var cropAlbumArt by mutableStateOf(prefs.getBoolean("CROP_ALBUM_ART", false))
+    var playerPanelSide by mutableStateOf(prefs.get("PLAYER_PANEL_SIDE", "right"))
+    var useLoginForBrowse by mutableStateOf(prefs.getBoolean("USE_LOGIN_FOR_BROWSE", true))
+    var ytmSync by mutableStateOf(prefs.getBoolean("YTM_SYNC", true))
 
     // Content Settings
     var hideExplicit by mutableStateOf(prefs.getBoolean("HIDE_EXPLICIT", false))
     var hideVideoSongs by mutableStateOf(prefs.getBoolean("HIDE_VIDEO_SONGS", false))
+    var showArtistPhotos by mutableStateOf(prefs.getBoolean("SHOW_ARTIST_PHOTOS", true))
+
+    // Content and language settings
+    var contentLanguage by mutableStateOf(prefs.get("CONTENT_LANGUAGE", "SYSTEM_DEFAULT"))
+    var contentCountry by mutableStateOf(prefs.get("CONTENT_COUNTRY", "SYSTEM_DEFAULT"))
+    var appLanguage by mutableStateOf(prefs.get("APP_LANGUAGE", "SYSTEM_DEFAULT"))
+
+    // Artist page display settings
+    var showArtistDescription by mutableStateOf(prefs.getBoolean("SHOW_ARTIST_DESCRIPTION", true))
+    var showArtistSubscriberCount by mutableStateOf(prefs.getBoolean("SHOW_ARTIST_SUBSCRIBER_COUNT", true))
+    var showMonthlyListeners by mutableStateOf(prefs.getBoolean("SHOW_MONTHLY_LISTENERS", true))
+
+    // Proxy settings
+    var proxyEnabled by mutableStateOf(prefs.getBoolean("PROXY_ENABLED", false))
+    var proxyUrl by mutableStateOf(prefs.get("PROXY_URL", "host:port"))
+    var proxyType by mutableStateOf(prefs.get("PROXY_TYPE", "HTTP"))
+    var proxyUsername by mutableStateOf(prefs.get("PROXY_USERNAME", "username"))
+    var proxyPassword by mutableStateOf(prefs.get("PROXY_PASSWORD", "password"))
+
+    // Home page settings
+    var randomizeHomeOrder by mutableStateOf(prefs.getBoolean("RANDOMIZE_HOME_ORDER", true))
+    var topListLength by mutableStateOf(prefs.get("TOP_SIZE", "50").toFloatOrNull() ?: 50f)
+    var quickPicksMode by mutableStateOf(prefs.get("QUICK_PICKS_MODE", "QUICK_PICKS"))
+
+    // Player Settings
+    var audioQuality by mutableStateOf(prefs.get("AUDIO_QUALITY", "AUTO"))
+    var audioOffload by mutableStateOf(prefs.getBoolean("AUDIO_OFFLOAD", false))
+    var seekExtraSeconds by mutableStateOf(prefs.getBoolean("SEEK_EXTRA_SECONDS", false))
+    var pauseOnMute by mutableStateOf(prefs.getBoolean("PAUSE_ON_MUTE", false))
+    var resumeOnBluetoothConnect by mutableStateOf(prefs.getBoolean("RESUME_ON_BLUETOOTH_CONNECT", false))
+    var keepScreenOn by mutableStateOf(prefs.getBoolean("KEEP_SCREEN_ON", false))
+
+    // Appearance Settings
+    var miniPlayerOutline by mutableStateOf(prefs.getBoolean("MINI_PLAYER_OUTLINE", false))
+    var squigglySlider by mutableStateOf(prefs.getBoolean("SQUIGGLY_SLIDER", false))
+    var sliderStyle by mutableStateOf(SliderStyle.valueOf(prefs.get("SLIDER_STYLE", "DEFAULT")))
+
+    // Developer & Updates
+    var developerMode by mutableStateOf(prefs.getBoolean("DEVELOPER_MODE", false))
+    var checkForUpdates by mutableStateOf(prefs.getBoolean("CHECK_FOR_UPDATES", true))
+
+    // UI Navigation States
+    var showIntegrationsSettings by mutableStateOf(false)
+
+    // Player Behavior Settings
+    var persistentQueue by mutableStateOf(prefs.getBoolean("PERSISTENT_QUEUE", true))
+    var persistentShuffleAcrossQueues by mutableStateOf(prefs.getBoolean("PERSISTENT_SHUFFLE_ACROSS_QUEUES", false))
+    var rememberShuffleAndRepeat by mutableStateOf(prefs.getBoolean("REMEMBER_SHUFFLE_AND_REPEAT", false))
+    var swipeToSong by mutableStateOf(prefs.getBoolean("SWIPE_TO_SONG", false))
+    var swipeToRemoveSong by mutableStateOf(prefs.getBoolean("SWIPE_TO_REMOVE_SONG", false))
+    var showLyrics by mutableStateOf(prefs.getBoolean("SHOW_LYRICS", false))
+
+    // Integration Settings
+    var lastFmUsername by mutableStateOf(prefs.get("LASTFM_USERNAME", ""))
+    var showLastFmSettings by mutableStateOf(false)
 
     // Privacy Settings
     var pauseListenHistory by mutableStateOf(prefs.getBoolean("PAUSE_LISTEN_HISTORY", false))
@@ -897,8 +1171,8 @@ object AppState {
         try { prefs.flush() } catch (_: Exception) {}
     }
     
-    fun setSliderStyle(style: SliderStyle) {
-        sliderStyleState = style
+    fun updateSliderStyle(style: SliderStyle) {
+        sliderStyle = style
         prefs.put("SLIDER_STYLE", style.name)
         try { prefs.flush() } catch (_: Exception) {}
     }
@@ -988,6 +1262,24 @@ object AppState {
         try { prefs.flush() } catch (_: Exception) {}
     }
 
+    fun updatePlayerPanelSide(side: String) {
+        playerPanelSide = side
+        prefs.put("PLAYER_PANEL_SIDE", side)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleUseLoginForBrowse(enabled: Boolean) {
+        useLoginForBrowse = enabled
+        prefs.putBoolean("USE_LOGIN_FOR_BROWSE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleYtmSync(enabled: Boolean) {
+        ytmSync = enabled
+        prefs.putBoolean("YTM_SYNC", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
     fun setSelectedThemeColor(color: ULong) {
         selectedThemeColor = color.toLong()
         prefs.putLong("SELECTED_THEME_COLOR", color.toLong())
@@ -995,6 +1287,19 @@ object AppState {
         if (!dynamicTheme) {
             // Update seed color when not using dynamic theme
             seedColor = androidx.compose.ui.graphics.Color(color)
+        }
+    }
+
+    fun updateThemeMode(mode: ThemeMode) {
+        themeMode = mode
+    }
+
+    fun updateThemeColor(color: Long) {
+        selectedThemeColor = color
+        prefs.putLong("SELECTED_THEME_COLOR", color)
+        try { prefs.flush() } catch (_: Exception) {}
+        if (!dynamicTheme) {
+            seedColor = androidx.compose.ui.graphics.Color(color.toULong())
         }
     }
 
@@ -1049,6 +1354,69 @@ object AppState {
         try { prefs.flush() } catch (_: Exception) {}
     }
 
+    fun toggleShowArtistPhotos(enabled: Boolean) {
+        showArtistPhotos = enabled
+        prefs.putBoolean("SHOW_ARTIST_PHOTOS", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Content and language settings functions
+    fun updateContentLanguage(language: String) {
+        contentLanguage = language
+        prefs.put("CONTENT_LANGUAGE", language)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateContentCountry(country: String) {
+        contentCountry = country
+        prefs.put("CONTENT_COUNTRY", country)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateAppLanguage(language: String) {
+        appLanguage = language
+        prefs.put("APP_LANGUAGE", language)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Artist page display settings functions
+    fun toggleShowArtistDescription(enabled: Boolean) {
+        showArtistDescription = enabled
+        prefs.putBoolean("SHOW_ARTIST_DESCRIPTION", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleShowArtistSubscriberCount(enabled: Boolean) {
+        showArtistSubscriberCount = enabled
+        prefs.putBoolean("SHOW_ARTIST_SUBSCRIBER_COUNT", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleShowMonthlyListeners(enabled: Boolean) {
+        showMonthlyListeners = enabled
+        prefs.putBoolean("SHOW_MONTHLY_LISTENERS", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Home page settings functions
+    fun toggleRandomizeHomeOrder(enabled: Boolean) {
+        randomizeHomeOrder = enabled
+        prefs.putBoolean("RANDOMIZE_HOME_ORDER", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateTopListLength(size: Float) {
+        topListLength = size
+        prefs.put("TOP_SIZE", size.toInt().toString())
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun updateQuickPicksMode(mode: String) {
+        quickPicksMode = mode
+        prefs.put("QUICK_PICKS_MODE", mode)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
     fun togglePauseListenHistory(enabled: Boolean) {
         pauseListenHistory = enabled
         prefs.putBoolean("PAUSE_LISTEN_HISTORY", enabled)
@@ -1059,6 +1427,112 @@ object AppState {
         pauseSearchHistory = enabled
         prefs.putBoolean("PAUSE_SEARCH_HISTORY", enabled)
         try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Player Settings Functions
+    fun updateAudioQuality(quality: String) {
+        audioQuality = quality
+        prefs.put("AUDIO_QUALITY", quality)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleAudioOffload(enabled: Boolean) {
+        audioOffload = enabled
+        prefs.putBoolean("AUDIO_OFFLOAD", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun togglePersistentQueue(enabled: Boolean) {
+        persistentQueue = enabled
+        prefs.putBoolean("PERSISTENT_QUEUE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun togglePersistentShuffleAcrossQueues(enabled: Boolean) {
+        persistentShuffleAcrossQueues = enabled
+        prefs.putBoolean("PERSISTENT_SHUFFLE_ACROSS_QUEUES", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleRememberShuffleAndRepeat(enabled: Boolean) {
+        rememberShuffleAndRepeat = enabled
+        prefs.putBoolean("REMEMBER_SHUFFLE_AND_REPEAT", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleSwipeToSong(enabled: Boolean) {
+        swipeToSong = enabled
+        prefs.putBoolean("SWIPE_TO_SONG", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleSwipeToRemoveSong(enabled: Boolean) {
+        swipeToRemoveSong = enabled
+        prefs.putBoolean("SWIPE_TO_REMOVE_SONG", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleShowLyrics(enabled: Boolean) {
+        showLyrics = enabled
+        prefs.putBoolean("SHOW_LYRICS", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleSeekExtraSeconds(enabled: Boolean) {
+        seekExtraSeconds = enabled
+        prefs.putBoolean("SEEK_EXTRA_SECONDS", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun togglePauseOnMute(enabled: Boolean) {
+        pauseOnMute = enabled
+        prefs.putBoolean("PAUSE_ON_MUTE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleResumeOnBluetoothConnect(enabled: Boolean) {
+        resumeOnBluetoothConnect = enabled
+        prefs.putBoolean("RESUME_ON_BLUETOOTH_CONNECT", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleKeepScreenOn(enabled: Boolean) {
+        keepScreenOn = enabled
+        prefs.putBoolean("KEEP_SCREEN_ON", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Appearance Settings Functions
+    fun toggleMiniPlayerOutline(enabled: Boolean) {
+        miniPlayerOutline = enabled
+        prefs.putBoolean("MINI_PLAYER_OUTLINE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun toggleSquigglySlider(enabled: Boolean) {
+        squigglySlider = enabled
+        prefs.putBoolean("SQUIGGLY_SLIDER", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Privacy Settings Functions
+    fun toggleDeveloperMode(enabled: Boolean) {
+        developerMode = enabled
+        prefs.putBoolean("DEVELOPER_MODE", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Integration Settings Functions
+    fun toggleCheckForUpdates(enabled: Boolean) {
+        checkForUpdates = enabled
+        prefs.putBoolean("CHECK_FOR_UPDATES", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun openUpdatePage() {
+        try {
+            Desktop.getDesktop().browse(URI("https://github.com/LampDelivery/Metrolist-Desktop/releases/latest"))
+        } catch (_: Exception) { }
     }
 
     fun clearListenHistory() {
@@ -1273,15 +1747,208 @@ object AppState {
         selectedAlbumId = null
         isArtistLoading = true
         artistIsSubscribed = false
+        artistPhotos = emptyList()
+        selectedLastFmPhotoUrl = null
+        recentlySelectedPhotoUrl = null
+        autoCycleJob?.cancel()
+        checkmarkHideJob?.cancel()
         scope.launch {
             try {
                 val result = GlobalYouTubeRepository.instance.getArtist(id)
                 artistData = result.sections
                 artistSectionBrowseIds = result.sectionBrowseIds
-                artistIsSubscribed = (result.sections["header"]?.firstOrNull() as? ArtistItem)?.isSubscribed ?: false
+                val header = (result.sections["header"]?.firstOrNull() as? ArtistItem)
+                artistIsSubscribed = header?.isSubscribed ?: false
+                
+                header?.title?.let { name ->
+                    fetchArtistPhotos(name, header.id)
+                }
             } catch (_: Exception) {}
             finally {
                 isArtistLoading = false
+            }
+        }
+    }
+
+    fun fetchArtistPhotos(name: String, artistId: String? = null) {
+        isArtistPhotosLoading = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val photos = mutableListOf<ArtistPhoto>()
+
+                // Fetch from Last.fm — deduplicate by URL to prevent the same image appearing twice
+                val lastfmPhotos = LastFM.getArtistPhotos(client, name)
+                lastfmPhotos.filter { it.isNotBlank() }.distinctBy { it }.forEach {
+                    photos.add(ArtistPhoto(it, "Last.fm"))
+                }
+
+                // Fetch from iTunes (high res icon)
+                val itunesPhoto = GlobalYouTubeRepository.instance.fetchArtistIcon(name)
+                itunesPhoto?.let { photos.add(ArtistPhoto(it, "iTunes")) }
+
+                // Fetch from Spotify
+                val spotifyIcon = fetchSpotifyIcon(name)
+                spotifyIcon?.let { photos.add(ArtistPhoto(it, "Spotify")) }
+
+                withContext(Dispatchers.Main) {
+                    artistPhotos = photos
+                    // Restore saved manual selection or auto-select first Last.fm photo when banner source is LASTFM
+                    if (artistBannerSource == ArtistSource.LASTFM && selectedLastFmPhotoUrl == null) {
+                        val savedPhotoUrl = selectedArtistId?.let { getSavedLastFmPhotoUrl(it) }
+                        selectedLastFmPhotoUrl = if (savedPhotoUrl != null && photos.any { it.url == savedPhotoUrl && it.source == "Last.fm" }) {
+                            savedPhotoUrl // Restore manual selection if still available
+                        } else {
+                            photos.firstOrNull { it.source == "Last.fm" }?.url // Auto-select first as fallback
+                        }
+                    }
+                    // Populate icon cache for the current artist based on icon source preference
+                    if (artistId != null && artistIconSource != ArtistSource.YOUTUBE) {
+                        val iconUrl = when (artistIconSource) {
+                            ArtistSource.ITUNES -> itunesPhoto
+                            ArtistSource.LASTFM -> photos.firstOrNull { it.source == "Last.fm" }?.url
+                            ArtistSource.SPOTIFY -> spotifyIcon
+                            else -> null
+                        }
+                        iconUrl?.let { artistIconCache[artistId] = it }
+                    }
+                    // Start auto-cycle if enabled and we have multiple Last.fm photos
+                    if (lastFmPhotoAutoCycle && photos.filter { it.source == "Last.fm" }.size > 1) {
+                        startLastFmAutoCycle()
+                    }
+                }
+            } catch (_: Exception) {}
+            finally {
+                isArtistPhotosLoading = false
+            }
+        }
+    }
+
+    fun updateArtistBannerSource(source: ArtistSource) {
+        artistBannerSource = source
+        prefs.put("ARTIST_BANNER_SOURCE", source.name)
+        try { prefs.flush() } catch (_: Exception) {}
+
+        // Show checkmark briefly for manual selection (not during auto-cycle)
+        if (!lastFmPhotoAutoCycle) {
+            val selectedPhotoUrl = when (source) {
+                ArtistSource.ITUNES -> artistPhotos.find { it.source == "iTunes" }?.url
+                ArtistSource.SPOTIFY -> artistPhotos.find { it.source == "Spotify" }?.url
+                ArtistSource.LASTFM -> selectedLastFmPhotoUrl
+                else -> null
+            }
+            if (selectedPhotoUrl != null) {
+                recentlySelectedPhotoUrl = selectedPhotoUrl
+                checkmarkHideJob?.cancel()
+                checkmarkHideJob = scope.launch {
+                    delay(2000) // Show checkmark for 2 seconds
+                    recentlySelectedPhotoUrl = null
+                }
+            }
+        }
+
+        // When switching to LASTFM and photos are already loaded, restore saved selection or auto-select the first one
+        if (source == ArtistSource.LASTFM && selectedLastFmPhotoUrl == null) {
+            val savedPhotoUrl = selectedArtistId?.let { getSavedLastFmPhotoUrl(it) }
+            selectedLastFmPhotoUrl = if (savedPhotoUrl != null && artistPhotos.any { it.url == savedPhotoUrl && it.source == "Last.fm" }) {
+                savedPhotoUrl // Restore manual selection if still available
+            } else {
+                artistPhotos.firstOrNull { it.source == "Last.fm" }?.url // Auto-select first as fallback
+            }
+        }
+    }
+
+    fun updateArtistIconSource(source: ArtistSource) {
+        artistIconSource = source
+        prefs.put("ARTIST_ICON_SOURCE", source.name)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Persistent manual photo selection: saves and restores last selected photo per artist
+    private fun getSavedLastFmPhotoUrl(artistId: String): String? {
+        return prefs.get("LASTFM_MANUAL_PHOTO_$artistId", null)
+    }
+
+    private fun saveLastFmPhotoUrl(artistId: String, url: String) {
+        prefs.put("LASTFM_MANUAL_PHOTO_$artistId", url)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    fun selectLastFmPhoto(url: String) {
+        selectedLastFmPhotoUrl = url
+        // Save manual selection persistently
+        selectedArtistId?.let { artistId ->
+            saveLastFmPhotoUrl(artistId, url)
+        }
+        // Show checkmark briefly for manual selection
+        if (!lastFmPhotoAutoCycle) {
+            recentlySelectedPhotoUrl = url
+            checkmarkHideJob?.cancel()
+            checkmarkHideJob = scope.launch {
+                delay(2000) // Show checkmark for 2 seconds
+                recentlySelectedPhotoUrl = null
+            }
+        }
+        if (artistBannerSource != ArtistSource.LASTFM) {
+            artistBannerSource = ArtistSource.LASTFM
+            prefs.put("ARTIST_BANNER_SOURCE", ArtistSource.LASTFM.name)
+            try { prefs.flush() } catch (_: Exception) {}
+        }
+    }
+
+    fun toggleLastFmAutoCycle() {
+        lastFmPhotoAutoCycle = !lastFmPhotoAutoCycle
+        prefs.putBoolean("LASTFM_PHOTO_AUTO_CYCLE", lastFmPhotoAutoCycle)
+        try { prefs.flush() } catch (_: Exception) {}
+        if (lastFmPhotoAutoCycle) {
+            // Clear checkmarks when entering auto-cycle mode
+            recentlySelectedPhotoUrl = null
+            checkmarkHideJob?.cancel()
+
+            val lastFmPhotos = artistPhotos.filter { it.source == "Last.fm" }
+            if (lastFmPhotos.isNotEmpty()) {
+                // Switch to LASTFM source if we have Last.fm photos
+                if (artistBannerSource != ArtistSource.LASTFM) {
+                    artistBannerSource = ArtistSource.LASTFM
+                    prefs.put("ARTIST_BANNER_SOURCE", ArtistSource.LASTFM.name)
+                }
+                // Auto-select first Last.fm photo if none selected yet
+                if (selectedLastFmPhotoUrl == null) {
+                    selectedLastFmPhotoUrl = lastFmPhotos.firstOrNull()?.url
+                }
+                // Start auto-cycle if we have multiple Last.fm photos
+                if (lastFmPhotos.size > 1) {
+                    startLastFmAutoCycle()
+                }
+            }
+        } else {
+            autoCycleJob?.cancel()
+        }
+    }
+
+    fun updateLastFmPhotoCycleInterval(seconds: Float) {
+        lastFmPhotoCycleInterval = seconds
+        prefs.putFloat("LASTFM_PHOTO_CYCLE_INTERVAL", seconds)
+        try { prefs.flush() } catch (_: Exception) {}
+        // Restart auto-cycle with new interval if it's currently running
+        if (lastFmPhotoAutoCycle && artistPhotos.filter { it.source == "Last.fm" }.size > 1) {
+            startLastFmAutoCycle()
+        }
+    }
+
+    private fun startLastFmAutoCycle() {
+        autoCycleJob?.cancel()
+        autoCycleJob = scope.launch {
+            while (true) {
+                delay((lastFmPhotoCycleInterval * 1000).toLong())
+                val photos = artistPhotos.filter { it.source == "Last.fm" }
+                if (photos.size > 1) {
+                    val currentIdx = photos.indexOfFirst { it.url == selectedLastFmPhotoUrl }
+                    val nextIdx = (currentIdx + 1) % photos.size
+                    selectedLastFmPhotoUrl = photos[nextIdx].url
+                    if (artistBannerSource != ArtistSource.LASTFM) {
+                        artistBannerSource = ArtistSource.LASTFM
+                    }
+                }
             }
         }
     }
@@ -1379,7 +2046,7 @@ object AppState {
                         val parsed = com.metrolist.desktop.ui.components.parseLrc(candidate.lyrics!!)
                         val hasWordSync = parsed.any { it.words != null }
 
-                        if (hasWordSync && bestResult == null) {
+                        if (hasWordSync) {
                             // Prefer first provider with word-level timing
                             bestResult = candidate
                             break

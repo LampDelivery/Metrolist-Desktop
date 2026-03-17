@@ -1,17 +1,14 @@
 package com.metrolist.desktop.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,18 +19,19 @@ fun <E> ChipsRow(
     onValueUpdate: (E) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
+    horizontalPadding: Dp = 32.dp
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Spacer(Modifier.width(32.dp))
+        Spacer(Modifier.width(horizontalPadding - 8.dp))
 
         chips.forEach { (value, label) ->
             val isSelected = currentValue == value
-            // Keep pills round even when selected (like Android app)
             val cornerRadius = 50.dp
 
             FilterChip(
@@ -55,10 +53,8 @@ fun <E> ChipsRow(
                     borderWidth = 1.dp,
                 ),
             )
-
-            Spacer(Modifier.width(8.dp))
         }
 
-        Spacer(Modifier.width(24.dp))
+        Spacer(Modifier.width(horizontalPadding - 8.dp))
     }
 }

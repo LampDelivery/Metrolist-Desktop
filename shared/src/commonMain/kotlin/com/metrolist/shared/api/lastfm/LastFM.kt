@@ -126,4 +126,67 @@ object LastFM {
             }
         )
     }
+
+    suspend fun getArtistInfo(httpClient: HttpClient, artist: String): JsonObject? {
+        return try {
+            val response = httpClient.get("https://ws.audioscrobbler.com/2.0/") {
+                parameter("method", "artist.getInfo")
+                parameter("artist", artist)
+                parameter("api_key", apiKey)
+                parameter("format", "json")
+            }
+            json.parseToJsonElement(response.bodyAsText()).jsonObject["artist"]?.jsonObject
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun getArtistPhotos(httpClient: HttpClient, artist: String): List<String> {
+        return try {
+            val response = httpClient.get("https://www.last.fm/music/${artist.replace(" ", "+")}/+images")
+            val html = response.bodyAsText()
+
+            val photoUrls = mutableListOf<String>()
+
+            // Target specific sections that contain artist photos (not related artists)
+            // Look for the main artist photos gallery section
+            val galleryPattern = Regex(
+                """<li[^>]*class="[^"]*image-list-item[^"]*"[^>]*>.*?<img[^>]*src="([^"]*lastfm\.freetls\.fastly\.net/i/u/[^"]+)"[^>]*>""",
+                RegexOption.DOT_MATCHES_ALL
+            )
+
+            galleryPattern.findAll(html).forEach { match ->
+                val imageUrl = match.groupValues[1]
+                    .replace(Regex("i/u/[a-zA-Z0-9]+/"), "i/u/ar0/")
+                photoUrls.add(imageUrl)
+            }
+
+            // If no gallery images found, try the artist header/avatar area
+            if (photoUrls.isEmpty()) {
+                val headerPattern = Regex(
+                    """<div[^>]*class="[^"]*header-metadata[^"]*"[^>]*>.*?<img[^>]*src="([^"]*lastfm\.freetls\.fastly\.net/i/u/[^"]+)"[^>]*>""",
+                    RegexOption.DOT_MATCHES_ALL
+                )
+
+                headerPattern.findAll(html).forEach { match ->
+                    val imageUrl = match.groupValues[1]
+                        .replace(Regex("i/u/[a-zA-Z0-9]+/"), "i/u/ar0/")
+                    photoUrls.add(imageUrl)
+                }
+            }
+
+            // Fallback: if still no images, use a more targeted approach but limit to first 5
+            if (photoUrls.isEmpty()) {
+                val fallbackPattern = Regex("https://lastfm\\.freetls\\.fastly\\.net/i/u/[a-zA-Z0-9]+/[a-zA-Z0-9]+\\.(jpg|png|webp|jpeg)")
+                fallbackPattern.findAll(html).take(5).forEach { match ->
+                    val imageUrl = match.value.replace(Regex("i/u/[a-zA-Z0-9]+/"), "i/u/ar0/")
+                    photoUrls.add(imageUrl)
+                }
+            }
+
+            photoUrls.distinct()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 }
