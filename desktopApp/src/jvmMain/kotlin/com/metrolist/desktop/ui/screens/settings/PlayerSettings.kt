@@ -115,24 +115,6 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
                 onCheckedChange = { AppState.toggleRememberShuffleAndRepeat(it) },
                 colorScheme = colorScheme
             )
-
-            SettingsToggleWithIcon(
-                title = "Swipe to skip song",
-                subtitle = "Swipe gestures to control playback in player",
-                icon = Icons.Outlined.SwipeLeft,
-                checked = AppState.swipeToSong,
-                onCheckedChange = { AppState.toggleSwipeToSong(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggleWithIcon(
-                title = "Swipe to remove song",
-                subtitle = "Swipe gestures to remove songs from queue",
-                icon = Icons.Outlined.SwipeRight,
-                checked = AppState.swipeToRemoveSong,
-                onCheckedChange = { AppState.toggleSwipeToRemoveSong(it) },
-                colorScheme = colorScheme
-            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -193,24 +175,6 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
                 icon = Icons.Outlined.VolumeOff,
                 checked = AppState.pauseOnMute,
                 onCheckedChange = { AppState.togglePauseOnMute(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggleWithIcon(
-                title = "Resume on Bluetooth connect",
-                subtitle = "Automatically resumes playback when Bluetooth device connects",
-                icon = Icons.Outlined.Bluetooth,
-                checked = AppState.resumeOnBluetoothConnect,
-                onCheckedChange = { AppState.toggleResumeOnBluetoothConnect(it) },
-                colorScheme = colorScheme
-            )
-
-            SettingsToggleWithIcon(
-                title = "Keep screen on",
-                subtitle = "Prevents screen from turning off during playback",
-                icon = Icons.Outlined.ScreenLockPortrait,
-                checked = AppState.keepScreenOn,
-                onCheckedChange = { AppState.toggleKeepScreenOn(it) },
                 colorScheme = colorScheme
             )
         }

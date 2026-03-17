@@ -230,14 +230,16 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
                 }
             }
 
-            SettingsToggleWithIcon(
-                title = "Show artist photos",
-                subtitle = "Shows photo section in artist pages",
-                icon = Icons.Outlined.Photo,
-                checked = AppState.showArtistPhotos,
-                onCheckedChange = { AppState.toggleShowArtistPhotos(it) },
-                colorScheme = colorScheme
-            )
+            if (AppState.artistBannerSource == ArtistSource.LASTFM) {
+                SettingsToggleWithIcon(
+                    title = "Show artist photos",
+                    subtitle = "Shows photo section in artist pages",
+                    icon = Icons.Outlined.Photo,
+                    checked = AppState.showArtistPhotos,
+                    onCheckedChange = { AppState.toggleShowArtistPhotos(it) },
+                    colorScheme = colorScheme
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))

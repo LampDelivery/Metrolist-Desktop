@@ -242,19 +242,19 @@ fun ThemeSettingsScreen(colorScheme: ColorScheme) {
                     mode = ThemeMode.AUTO,
                     isSelected = AppState.themeMode == ThemeMode.AUTO,
                     colorScheme = colorScheme,
-                    onClick = { AppState.themeMode = ThemeMode.AUTO }
+                    onClick = { AppState.updateThemeMode(ThemeMode.AUTO) }
                 )
                 ThemeModeButton(
                     mode = ThemeMode.LIGHT,
                     isSelected = AppState.themeMode == ThemeMode.LIGHT,
                     colorScheme = colorScheme,
-                    onClick = { AppState.themeMode = ThemeMode.LIGHT }
+                    onClick = { AppState.updateThemeMode(ThemeMode.LIGHT) }
                 )
                 ThemeModeButton(
                     mode = ThemeMode.DARK,
                     isSelected = AppState.themeMode == ThemeMode.DARK,
                     colorScheme = colorScheme,
-                    onClick = { AppState.themeMode = ThemeMode.DARK }
+                    onClick = { AppState.updateThemeMode(ThemeMode.DARK) }
                 )
             }
         }
