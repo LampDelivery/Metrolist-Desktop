@@ -9,10 +9,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -23,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +57,7 @@ fun ArtistScreen(colorScheme: ColorScheme) {
     val isSubscribed = AppState.artistIsSubscribed
     val hasSongs = AppState.artistData.entries.any { it.key != "header" && it.value.any { item -> item is SongItem } }
     var descriptionExpanded by remember { mutableStateOf(false) }
-    var showAllPhotosDialog by remember { mutableStateOf(false) }
+    var showAllPhotosFullScreen by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
 
     LaunchedEffect(lazyListState) {
@@ -64,8 +67,15 @@ fun ArtistScreen(colorScheme: ColorScheme) {
         }.collect { AppState.topBarScrollOffset = it }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize()) {
+    // Show either the full screen photos view or the regular artist screen
+    if (showAllPhotosFullScreen) {
+        ArtistPhotosFullScreen(
+            onBack = { showAllPhotosFullScreen = false },
+            colorScheme = colorScheme
+        )
+    } else {
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize()) {
 
             // ── Header with banner ──────────────────────────────────────────────
             item {
@@ -235,7 +245,7 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (AppState.artistPhotos.size > 3) {
                                     TextButton(
-                                        onClick = { showAllPhotosDialog = true },
+                                        onClick = { showAllPhotosFullScreen = true },
                                         colors = ButtonDefaults.textButtonColors(
                                             contentColor = colorScheme.primary
                                         )
@@ -414,101 +424,123 @@ fun ArtistScreen(colorScheme: ColorScheme) {
 
             item { Spacer(Modifier.height(32.dp)) }
         }
+    }
+}
+}
 
-        // Show All Photos Dialog
-        if (showAllPhotosDialog) {
-            AlertDialog(
-                onDismissRequest = { showAllPhotosDialog = false },
-                title = {
-                    Text(
-                        "Artist Photos",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.height(400.dp)
-                    ) {
-                        items(AppState.artistPhotos) { photo ->
-                            val isBanner = when (photo.source) {
-                                "Last.fm" -> photo.url == AppState.selectedLastFmPhotoUrl
-                                "iTunes" -> AppState.artistBannerSource == ArtistSource.ITUNES &&
-                                        AppState.artistPhotos.find { it.source == "iTunes" }?.url == photo.url
-                                "Spotify" -> AppState.artistBannerSource == ArtistSource.SPOTIFY &&
-                                        AppState.artistPhotos.find { it.source == "Spotify" }?.url == photo.url
-                                else -> false
+@Composable
+fun ArtistPhotosFullScreen(
+    onBack: () -> Unit,
+    colorScheme: ColorScheme
+) {
+    Column(modifier = Modifier.fillMaxSize().background(colorScheme.surface)) {
+        // Header with back button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .padding(top = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = colorScheme.onSurface
+                )
+            }
+            Text(
+                "Artist Photos",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        // Photos grid
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 280.dp),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(AppState.artistPhotos) { photo ->
+                val isBanner = when (photo.source) {
+                    "Last.fm" -> photo.url == AppState.selectedLastFmPhotoUrl
+                    "iTunes" -> AppState.artistBannerSource == ArtistSource.ITUNES &&
+                            AppState.artistPhotos.find { it.source == "iTunes" }?.url == photo.url
+                    "Spotify" -> AppState.artistBannerSource == ArtistSource.SPOTIFY &&
+                            AppState.artistPhotos.find { it.source == "Spotify" }?.url == photo.url
+                    else -> false
+                }
+
+                // Show checkmark only when recently manually selected (not during auto-cycle)
+                val showCheckmark = !AppState.lastFmPhotoAutoCycle &&
+                                  photo.url == AppState.recentlySelectedPhotoUrl
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clickable {
+                            when (photo.source) {
+                                "Last.fm" -> AppState.selectLastFmPhoto(photo.url)
+                                "iTunes" -> AppState.updateArtistBannerSource(ArtistSource.ITUNES)
+                                "Spotify" -> AppState.updateArtistBannerSource(ArtistSource.SPOTIFY)
                             }
+                            onBack()
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (showCheckmark) colorScheme.primaryContainer else colorScheme.surface
+                    ),
+                    border = if (showCheckmark) BorderStroke(2.dp, colorScheme.primary) else null,
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AsyncImage(
+                            url = photo.url,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp)
+                        )
 
-                            // Show checkmark only when recently manually selected (not during auto-cycle)
-                            val showCheckmark = !AppState.lastFmPhotoAutoCycle &&
-                                              photo.url == AppState.recentlySelectedPhotoUrl
-
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .clickable {
-                                        when (photo.source) {
-                                            "Last.fm" -> AppState.selectLastFmPhoto(photo.url)
-                                            "iTunes" -> AppState.updateArtistBannerSource(ArtistSource.ITUNES)
-                                            "Spotify" -> AppState.updateArtistBannerSource(ArtistSource.SPOTIFY)
-                                        }
-                                        showAllPhotosDialog = false
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (showCheckmark) colorScheme.primaryContainer else colorScheme.surface
-                                ),
-                                border = if (showCheckmark) BorderStroke(2.dp, colorScheme.primary) else null
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    AsyncImage(
-                                        url = photo.url,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    Row(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        // Only show source label if it's not Last.fm
-                                        if (photo.source != "Last.fm") {
-                                            Text(
-                                                photo.source,
-                                                modifier = Modifier
-                                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = Color.White
-                                            )
-                                        }
-                                        if (showCheckmark) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                "Recently selected",
-                                                tint = Color.White,
-                                                modifier = Modifier
-                                                    .size(20.dp)
-                                                    .background(colorScheme.primary, CircleShape)
-                                                    .padding(2.dp)
-                                            )
-                                        }
-                                    }
-                                }
+                        // Source and checkmark overlay
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Only show source label if it's not Last.fm
+                            if (photo.source != "Last.fm") {
+                                Text(
+                                    photo.source,
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            if (showCheckmark) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    "Recently selected",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(colorScheme.primary, CircleShape)
+                                        .padding(4.dp)
+                                )
                             }
                         }
                     }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showAllPhotosDialog = false }) {
-                        Text("Done")
-                    }
-                },
-                modifier = Modifier.widthIn(min = 500.dp, max = 600.dp)
-            )
+                }
+            }
         }
     }
 }
