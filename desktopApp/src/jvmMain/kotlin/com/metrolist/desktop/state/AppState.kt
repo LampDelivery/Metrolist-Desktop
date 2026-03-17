@@ -369,13 +369,18 @@ object AppState {
     var miniplayerFocusMode by mutableStateOf(prefs.getBoolean("MINIPLAYER_FOCUS_MODE", false))
 
     // Like / Queue / Playlist
-    var likedSongIds by mutableStateOf(mutableSetOf<String>())
+    var likedSongIds by mutableStateOf(
+        prefs.get("LIKED_SONG_IDS", "").split(",").filter { it.isNotBlank() }.toMutableSet()
+    )
     var userPlaylists by mutableStateOf<List<PlaylistItem>>(emptyList())
     var showAddToPlaylistSong by mutableStateOf<SongItem?>(null)
 
     // Discord RPC - cached artist icon
     var cachedArtistIcon by mutableStateOf<String?>(null)
     val artistIconCache = mutableMapOf<String, String>()
+
+    // Banner cache to prevent YouTube banner flash when using Last.fm
+    val artistBannerCache = mutableMapOf<String, String>()
 
     // Lyrics provider preferences — ordered list with per-provider enable/disable (matches Android app default)
     private val defaultLyricsOrder = listOf(
@@ -1036,6 +1041,10 @@ object AppState {
             val newSet = likedSongIds.toMutableSet()
             if (isLiked) newSet.remove(song.id) else newSet.add(song.id)
             likedSongIds = newSet
+
+            // Persist to preferences
+            prefs.put("LIKED_SONG_IDS", likedSongIds.joinToString(","))
+            try { prefs.flush() } catch (_: Exception) {}
         }
     }
 
@@ -1811,6 +1820,16 @@ object AppState {
                         }
                         iconUrl?.let { artistIconCache[artistId] = it }
                     }
+                    // Populate banner cache to prevent YouTube banner flash
+                    if (artistId != null) {
+                        val bannerUrl = when (artistBannerSource) {
+                            ArtistSource.ITUNES -> itunesPhoto
+                            ArtistSource.LASTFM -> selectedLastFmPhotoUrl ?: photos.firstOrNull { it.source == "Last.fm" }?.url
+                            ArtistSource.SPOTIFY -> spotifyIcon
+                            else -> null
+                        }
+                        bannerUrl?.let { artistBannerCache[artistId] = it }
+                    }
                     // Start auto-cycle if enabled and we have multiple Last.fm photos
                     if (lastFmPhotoAutoCycle && photos.filter { it.source == "Last.fm" }.size > 1) {
                         startLastFmAutoCycle()
@@ -1827,6 +1846,21 @@ object AppState {
         artistBannerSource = source
         prefs.put("ARTIST_BANNER_SOURCE", source.name)
         try { prefs.flush() } catch (_: Exception) {}
+
+        // Update banner cache for current artist
+        selectedArtistId?.let { artistId ->
+            val bannerUrl = when (source) {
+                ArtistSource.ITUNES -> artistPhotos.find { it.source == "iTunes" }?.url
+                ArtistSource.SPOTIFY -> artistPhotos.find { it.source == "Spotify" }?.url
+                ArtistSource.LASTFM -> selectedLastFmPhotoUrl ?: artistPhotos.find { it.source == "Last.fm" }?.url
+                else -> null
+            }
+            if (bannerUrl != null) {
+                artistBannerCache[artistId] = bannerUrl
+            } else {
+                artistBannerCache.remove(artistId)
+            }
+        }
 
         // Show checkmark briefly for manual selection (not during auto-cycle)
         if (!lastFmPhotoAutoCycle) {
@@ -1878,6 +1912,12 @@ object AppState {
         // Save manual selection persistently
         selectedArtistId?.let { artistId ->
             saveLastFmPhotoUrl(artistId, url)
+        }
+        // Update banner cache if using Last.fm as banner source
+        if (artistBannerSource == ArtistSource.LASTFM) {
+            selectedArtistId?.let { artistId ->
+                artistBannerCache[artistId] = url
+            }
         }
         // Show checkmark briefly for manual selection
         if (!lastFmPhotoAutoCycle) {
@@ -1947,6 +1987,10 @@ object AppState {
                     selectedLastFmPhotoUrl = photos[nextIdx].url
                     if (artistBannerSource != ArtistSource.LASTFM) {
                         artistBannerSource = ArtistSource.LASTFM
+                    }
+                    // Update banner cache with new auto-cycled photo
+                    selectedArtistId?.let { artistId ->
+                        artistBannerCache[artistId] = photos[nextIdx].url
                     }
                 }
             }

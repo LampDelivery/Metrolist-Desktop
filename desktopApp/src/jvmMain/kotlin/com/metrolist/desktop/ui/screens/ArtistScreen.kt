@@ -70,11 +70,17 @@ fun ArtistScreen(colorScheme: ColorScheme) {
             // ── Header with banner ──────────────────────────────────────────────
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-                    val bannerUrl = when (AppState.artistBannerSource) {
-                        ArtistSource.YOUTUBE -> artistInfo?.banner ?: artistInfo?.thumbnail
-                        ArtistSource.ITUNES -> AppState.artistPhotos.find { it.source == "iTunes" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
-                        ArtistSource.LASTFM -> AppState.selectedLastFmPhotoUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
-                        ArtistSource.SPOTIFY -> AppState.artistPhotos.find { it.source == "Spotify" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                    // Check cached banner first to prevent YouTube flash
+                    val cachedBanner = artistInfo?.id?.let { AppState.artistBannerCache[it] }
+                    val bannerUrl = if (cachedBanner != null && AppState.artistBannerSource != ArtistSource.YOUTUBE) {
+                        cachedBanner
+                    } else {
+                        when (AppState.artistBannerSource) {
+                            ArtistSource.YOUTUBE -> artistInfo?.banner ?: artistInfo?.thumbnail
+                            ArtistSource.ITUNES -> AppState.artistPhotos.find { it.source == "iTunes" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            ArtistSource.LASTFM -> AppState.selectedLastFmPhotoUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            ArtistSource.SPOTIFY -> AppState.artistPhotos.find { it.source == "Spotify" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                        }
                     }
 
                     Crossfade(
