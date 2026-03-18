@@ -1,6 +1,5 @@
 package com.metrolist.shared.api.innertube.models.response
 
-import com.metrolist.shared.api.innertube.models.YouTubeDataPage
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 

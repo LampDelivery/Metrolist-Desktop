@@ -5,11 +5,28 @@
 
 package com.metrolist.shared.db.daos
 
-import androidx.room.*
-import androidx.sqlite.SQLiteConnection
-import com.metrolist.shared.db.entities.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
+import com.metrolist.shared.db.entities.AlbumArtistMap
+import com.metrolist.shared.db.entities.AlbumEntity
+import com.metrolist.shared.db.entities.ArtistEntity
+import com.metrolist.shared.db.entities.Event
+import com.metrolist.shared.db.entities.PlayCountEntity
+import com.metrolist.shared.db.entities.PlaylistEntity
+import com.metrolist.shared.db.entities.PlaylistSongMap
+import com.metrolist.shared.db.entities.RelatedSongMap
+import com.metrolist.shared.db.entities.SearchHistory
+import com.metrolist.shared.db.entities.SetVideoIdEntity
+import com.metrolist.shared.db.entities.Song
+import com.metrolist.shared.db.entities.SongAlbumMap
+import com.metrolist.shared.db.entities.SongArtistMap
+import com.metrolist.shared.db.entities.SongEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.LocalDateTime
 
 @Dao
 interface DatabaseDao {

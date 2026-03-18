@@ -80,6 +80,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
         val outlineColor = if (AppState.isWindowFocused && !AppState.isMaximized) colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent
         
         var searchText by remember { mutableStateOf("") }
+        var isSearchFocused by remember { mutableStateOf(false) }
         var selectedNavIndex by remember { mutableIntStateOf(
             AppState.sidebarNavItems.filter { it.visible }
                 .indexOfFirst { it.id == AppState.defaultOpenTab }
@@ -450,7 +451,12 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                     Box(modifier = Modifier.weight(1f).fillMaxHeight().clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { focusManager.clearFocus() }) {
+                    ) {
+                        // Only clear focus if search is not currently focused to avoid interrupting typing
+                        if (!isSearchFocused) {
+                            focusManager.clearFocus()
+                        }
+                    }) {
                         LaunchedEffect(pageKey) {
                             AppState.topBarScrollOffset = if (pageKey in setOf("home", "artist")) 0 else Int.MAX_VALUE
                         }
@@ -545,6 +551,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             backgroundAlpha = topBarAlpha,
                             searchText = searchText,
                             onSearchChange = { searchText = it },
+                            onSearchFocusChange = { isSearchFocused = it },
                             onClose = onClose,
                             onMinimize = onMinimize,
                             onMaximize = onMaximize

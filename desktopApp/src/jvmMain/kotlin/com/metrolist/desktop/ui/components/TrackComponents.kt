@@ -1,40 +1,87 @@
 package com.metrolist.desktop.ui.components
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.LibraryAddCheck
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.text.*
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.metrolist.shared.model.*
-import com.metrolist.desktop.state.AppState
-import com.metrolist.desktop.constants.ThumbnailCornerRadius
+import androidx.compose.ui.unit.sp
 import com.metrolist.desktop.constants.ListItemHeight
 import com.metrolist.desktop.constants.ListThumbnailSize
+import com.metrolist.desktop.constants.ThumbnailCornerRadius
+import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.ui.theme.MetrolistShareIcon
+import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.ArtistItem
+import com.metrolist.shared.model.ArtistSource
+import com.metrolist.shared.model.EpisodeItem
+import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.model.PodcastItem
+import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.model.YTItem
 
 /** Animated equalizer bars shown on currently playing tracks */
 @Composable
@@ -60,6 +107,33 @@ fun NowPlayingBars(isPlaying: Boolean, color: Color, modifier: Modifier = Modifi
     }
 }
 
+/** Explicit content E rating badge */
+@Composable
+fun ExplicitBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(18.dp)
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(2.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = Color.Gray,
+                shape = RoundedCornerShape(2.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "E",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Black,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp
+        )
+    }
+}
+
 @Composable
 fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
     val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius)
@@ -79,13 +153,22 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
 
     val isCurrentTrack = item is SongItem && AppState.currentTrack?.id == item.id
 
-    // Resolve thumbnail with source priority for ArtistItem
-    val thumbnail = remember(item, AppState.artistIconSource) {
-        if (item is ArtistItem) {
-            val cacheKey = item.id
-            val cached = AppState.artistIconCache[cacheKey]
-            cached ?: item.thumbnail
-        } else item.thumbnail
+    // Resolve thumbnail with source priority for ArtistItem - reactive to cache changes
+    val thumbnail = if (item is ArtistItem) {
+        val cacheKey = item.id
+        val cached = AppState.artistIconCache[cacheKey]
+        cached ?: item.thumbnail
+    } else {
+        item.thumbnail
+    }
+
+    // Trigger on-demand icon fetch for ArtistItems when cache is empty and non-YouTube source is selected
+    if (item is ArtistItem && AppState.artistIconSource != ArtistSource.YOUTUBE) {
+        LaunchedEffect(item.id, AppState.artistIconSource) {
+            if (AppState.artistIconCache[item.id] == null) {
+                AppState.fetchArtistIconOnDemand(item.id, item.title, AppState.artistIconSource)
+            }
+        }
     }
 
     Box {
@@ -120,35 +203,83 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
                         NowPlayingBars(AppState.isPlaying, Color.White)
                     }
                 }
-                // Hover overlay: dark scrim + action icons
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .alpha(hoverAlpha)
-                        .clip(shape)
-                        .background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.BottomEnd
-                ) {
-                    Row(modifier = Modifier.padding(4.dp)) {
-                        if (item is SongItem) {
-                            IconButton(
-                                onClick = { AppState.toggleLike(item) },
-                                modifier = Modifier.size(32.dp)
+                // Hover overlay: play button + action icons (Android app style)
+                if (!isCurrentTrack && item !is ArtistItem) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .alpha(hoverAlpha)
+                            .clip(shape)
+                            .background(Color.Black.copy(alpha = 0.6f)) // Android app alpha = 0.6f
+                    ) {
+                        // Play button positioning: center for all items
+                        Box(
+                            modifier = Modifier.align(Alignment.Center),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                onClick = {
+                                    when (item) {
+                                        is SongItem -> AppState.playTrack(item)
+                                        is AlbumItem -> AppState.playAlbum(item.id)
+                                        is PlaylistItem -> AppState.fetchPlaylistData(item.id, item.thumbnail)
+                                        is PodcastItem -> {} // No action defined yet
+                                        is EpisodeItem -> {} // No action defined yet
+                                    }
+                                },
+                                shape = CircleShape,
+                                color = colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp), // Android app size
+                                shadowElevation = 0.dp
                             ) {
-                                Icon(Icons.Outlined.FavoriteBorder, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            }
-                            IconButton(
-                                onClick = { /* TODO: share */ },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(MetrolistShareIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Outlined.PlayArrow,
+                                        contentDescription = "Play",
+                                        tint = colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(20.dp) // Android app icon size
+                                    )
+                                }
                             }
                         }
-                        IconButton(
-                            onClick = { showContextMenu = true },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.MoreVert, null, tint = Color.White, modifier = Modifier.size(16.dp))
+
+                        // Action icons in bottom right corner (only for songs)
+                        if (item is SongItem) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { AppState.toggleLike(item) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Outlined.FavoriteBorder, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                                IconButton(
+                                    onClick = { /* TODO: share */ },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(MetrolistShareIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                                IconButton(
+                                    onClick = { showContextMenu = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.MoreVert, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        } else {
+                            // For albums/playlists/etc., show menu icon in top right corner to avoid overlap
+                            IconButton(
+                                onClick = { showContextMenu = true },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(32.dp)
+                            ) {
+                                Icon(Icons.Default.MoreVert, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
@@ -213,6 +344,50 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
                     subtitle.getStringAnnotations("ALBUM", offset, offset).firstOrNull()?.let { AppState.fetchAlbumData(it.item) }
                 }
             )
+
+            // Song state badges (for songs only) - compact horizontal layout for grid
+            if (item is SongItem) {
+                Row(
+                    modifier = Modifier.padding(top = 4.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Liked icon
+                    if (AppState.likedSongIds.contains(item.id)) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Liked",
+                            tint = colorScheme.error,
+                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                        )
+                    }
+
+                    // Explicit content badge
+                    if (item.isExplicit) {
+                        ExplicitBadge(modifier = Modifier.padding(end = 2.dp))
+                    }
+
+                    // Downloaded icon - demo placeholder
+                    if (item.id.hashCode() % 5 == 0) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Downloaded",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                        )
+                    }
+
+                    // Library icon
+                    if (AppState.likedSongIds.contains(item.id)) {
+                        Icon(
+                            imageVector = Icons.Outlined.LibraryAddCheck,
+                            contentDescription = "In Library",
+                            tint = colorScheme.tertiary,
+                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                        )
+                    }
+                }
+            }
         }
 
         // Context menus
@@ -245,13 +420,22 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
 
     val isCurrentTrack = item is SongItem && AppState.currentTrack?.id == item.id
 
-    // Resolve thumbnail with source priority for ArtistItem
-    val thumbnail = remember(item, AppState.artistIconSource) {
-        if (item is ArtistItem) {
-            val cacheKey = item.id
-            val cached = AppState.artistIconCache[cacheKey]
-            cached ?: item.thumbnail
-        } else item.thumbnail
+    // Resolve thumbnail with source priority for ArtistItem - reactive to cache changes
+    val thumbnail = if (item is ArtistItem) {
+        val cacheKey = item.id
+        val cached = AppState.artistIconCache[cacheKey]
+        cached ?: item.thumbnail
+    } else {
+        item.thumbnail
+    }
+
+    // Trigger on-demand icon fetch for ArtistItems when cache is empty and non-YouTube source is selected
+    if (item is ArtistItem && AppState.artistIconSource != ArtistSource.YOUTUBE) {
+        LaunchedEffect(item.id, AppState.artistIconSource) {
+            if (AppState.artistIconCache[item.id] == null) {
+                AppState.fetchArtistIconOnDemand(item.id, item.title, AppState.artistIconSource)
+            }
+        }
     }
 
     Box {
@@ -283,6 +467,39 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         NowPlayingBars(AppState.isPlaying, Color.White, Modifier.size(ListThumbnailSize.times(0.5f)))
+                    }
+                }
+                // Play button overlay on hover for songs/albums (Android app style)
+                if (!isCurrentTrack && (item is SongItem || item is AlbumItem)) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .alpha(iconAlpha)
+                            .clip(shape)
+                            .background(Color.Black.copy(alpha = 0.6f)), // Android app alpha = 0.6f
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            onClick = {
+                                when (item) {
+                                    is SongItem -> AppState.playTrack(item)
+                                    is AlbumItem -> AppState.playAlbum(item.id)
+                                }
+                            },
+                            shape = CircleShape,
+                            color = colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp), // Android app size
+                            shadowElevation = 0.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.PlayArrow,
+                                    contentDescription = "Play",
+                                    tint = colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp) // Android app icon size
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -339,6 +556,53 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
                         subtitle.getStringAnnotations("ALBUM", offset, offset).firstOrNull()?.let { AppState.fetchAlbumData(it.item) }
                     }
                 )
+
+                // Song state badges (for songs only)
+                if (item is SongItem) {
+                    Row(
+                        modifier = Modifier.padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Liked icon - matches Android behavior
+                        if (AppState.likedSongIds.contains(item.id)) {
+                            Icon(
+                                imageVector = Icons.Filled.Favorite,
+                                contentDescription = "Liked",
+                                tint = colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Explicit content badge
+                        if (item.isExplicit) {
+                            ExplicitBadge()
+                        }
+
+                        // Downloaded icon - placeholder for when download system is implemented
+                        // TODO: Add actual download state checking when download system is ready
+                        // For now, just show offline icon for demo purposes on some tracks
+                        if (item.id.hashCode() % 5 == 0) { // Demo: show on every 5th track
+                            Icon(
+                                imageVector = Icons.Outlined.Download,
+                                contentDescription = "Downloaded",
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Library icon - show for songs that are in user's library
+                        // TODO: Add actual library state checking when library system is enhanced
+                        // For now, treat liked songs as library songs
+                        if (AppState.likedSongIds.contains(item.id)) {
+                            Icon(
+                                imageVector = Icons.Outlined.LibraryAddCheck,
+                                contentDescription = "In Library",
+                                tint = colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
             // Duration fades out when hovering to make room for action button
             if (item is SongItem && item.duration != null) {

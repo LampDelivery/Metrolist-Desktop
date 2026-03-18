@@ -1,30 +1,117 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 package com.metrolist.desktop.ui.components
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
-import androidx.compose.foundation.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.EaseInBack
+import androidx.compose.animation.core.EaseOutBack
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CloseFullscreen
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Lyrics
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.RepeatOne
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -32,26 +119,46 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.metrolist.desktop.constants.BottomPlayerHeight
+import com.metrolist.desktop.constants.ExpandedThumbnailCornerRadius
+import com.metrolist.desktop.constants.RepeatMode
+import com.metrolist.desktop.constants.SliderStyle
 import com.metrolist.desktop.state.AppState
-import com.metrolist.desktop.constants.*
-import com.metrolist.desktop.ui.theme.*
-import kotlin.math.roundToInt
+import com.metrolist.desktop.ui.theme.MetrolistPauseIcon
+import com.metrolist.desktop.ui.theme.MetrolistShareIcon
+import com.metrolist.desktop.ui.theme.MetrolistVolumeDownIcon
+import com.metrolist.desktop.ui.theme.MetrolistVolumeMuteIcon
+import com.metrolist.desktop.ui.theme.MetrolistVolumeOffIcon
+import com.metrolist.desktop.ui.theme.MetrolistVolumeUpIcon
+import com.metrolist.desktop.ui.theme.PlayerColorExtractor
+import com.metrolist.desktop.ui.theme.toHsv
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.net.URI
+import kotlin.math.roundToInt
+import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
 import org.jetbrains.skia.Image as SkiaImage
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.BlurredEdgeTreatment
+import com.metrolist.shared.api.innertube.models.response.PlayerResponse
+import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.state.GlobalYouTubeRepository
 
 @Composable
 fun AnimatedGradientBackground(color: Color) {
@@ -376,41 +483,6 @@ private fun ExpandedTabsContent() {
                         1 -> DesktopLyricsView()
                         2 -> RelatedContent()
                     }
-                }
-            }
-        }
-
-        // Sleep timer row
-        val sleepActive = AppState.sleepTimerEnabled
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { showSleepDialog = true }
-                .padding(vertical = 12.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Bedtime, null,
-                    tint = if (sleepActive) Color.White else Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = when {
-                        AppState.sleepTimerStopAfterCurrentSong -> "Stopping after current song"
-                        sleepActive -> "Sleep: ${formatSleepTime(AppState.sleepTimerTimeLeftMs)}"
-                        else -> "Sleep Timer"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (sleepActive) Color.White else Color.White.copy(alpha = 0.7f)
-                )
-            }
-            if (sleepActive) {
-                IconButton(onClick = { AppState.clearSleepTimer() }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Outlined.Close, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -873,6 +945,9 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
 
     var isDragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
+    var showPlayerMenu by remember { mutableStateOf(false) }
+    var showSleepDialog by remember { mutableStateOf(false) }
+    var showDetailsDialog by remember { mutableStateOf(false) }
 
     // Real-time extrapolation: advance position at 60fps between player updates
     var extrapolatedProgress by remember { mutableStateOf(0f) }
@@ -1087,6 +1162,11 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
                         if (!isNarrow) {
                             AnimatedControlIconButton(icon = when(AppState.repeatMode) { RepeatMode.OFF -> Icons.Outlined.Repeat; RepeatMode.ALL -> Icons.Outlined.Repeat; RepeatMode.ONE -> Icons.Outlined.RepeatOne }, onClick = { AppState.repeatMode = RepeatMode.entries[(AppState.repeatMode.ordinal + 1) % 3] }, contentColor = if (AppState.repeatMode != RepeatMode.OFF) colorScheme.primary else colorScheme.onSurfaceVariant, iconSize = 20.dp)
                             AnimatedControlIconButton(icon = Icons.Outlined.Shuffle, onClick = { AppState.shuffleEnabled = !AppState.shuffleEnabled }, contentColor = if (AppState.shuffleEnabled) colorScheme.primary else colorScheme.onSurfaceVariant, iconSize = 20.dp)
+
+                            // Three-dot menu button
+                            IconButton(onClick = { showPlayerMenu = !showPlayerMenu }) {
+                                Icon(Icons.Outlined.MoreVert, "More options", tint = colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                            }
                         }
                         
                         val expandRotation by animateFloatAsState(targetValue = if (AppState.isExpanded) 180f else 0f)
@@ -1097,5 +1177,198 @@ fun StandardBottomPlayer(colorScheme: ColorScheme) {
                 }
             }
         }
+    }
+
+    // Player Menu Panel
+    if (showPlayerMenu) {
+        PlayerMenuPanel(
+            colorScheme = colorScheme,
+            onDismiss = { showPlayerMenu = false },
+            onShowAddToPlaylistDialog = {
+                AppState.currentTrack?.let { song ->
+                    AppState.showAddToPlaylistSong = song
+                    AppState.fetchUserPlaylists()
+                }
+                showPlayerMenu = false
+            },
+            onShowDetailsDialog = {
+                showDetailsDialog = true
+                showPlayerMenu = false
+            },
+            onShowSleepTimerDialog = {
+                showSleepDialog = true
+                showPlayerMenu = false
+            }
+        )
+    }
+
+    // Sleep Timer Dialog
+    if (showSleepDialog) {
+        SleepTimerDialog(onDismiss = { showSleepDialog = false })
+    }
+
+    // Media Details Dialog
+    if (showDetailsDialog) {
+        MediaDetailsDialog(
+            song = AppState.currentTrack,
+            onDismiss = { showDetailsDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun MediaDetailsDialog(
+    song: SongItem?,
+    onDismiss: () -> Unit
+) {
+    var playerResponse by remember { mutableStateOf<PlayerResponse?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(song?.id) {
+        if (song != null) {
+            isLoading = true
+            try {
+                // Try to get detailed information via getStreamUrl which internally uses PlayerResponse
+                GlobalYouTubeRepository.instance.getStreamUrl(song.id)
+                // For now, we'll display basic info. Later we can expose PlayerResponse from repository
+            } catch (_: Exception) {
+                // Handle error silently
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Media Details",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (isLoading) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Loading details...")
+                    }
+                } else if (song != null) {
+                    // Basic Information
+                    DetailSection("Basic Information") {
+                        DetailRow("Title", song.title)
+                        DetailRow("Artist", song.artists.joinToString(", ") { it.name })
+                        song.album?.let { album ->
+                            DetailRow("Album", album.name)
+                        }
+                        song.duration?.let { duration ->
+                            val minutes = (duration / 1000) / 60
+                            val seconds = (duration / 1000) % 60
+                            DetailRow("Duration", "${minutes}:${seconds.toString().padStart(2, '0')}")
+                        }
+                        DetailRow("Video ID", song.id)
+                        if (song.isExplicit) {
+                            DetailRow("Content", "Explicit")
+                        }
+                    }
+
+                    // Library Status
+                    DetailSection("Library Status") {
+                        DetailRow("In Library", if (song.libraryAddToken != null || song.libraryRemoveToken != null) "Yes" else "No")
+                        if (song.libraryAddToken != null) {
+                            DetailRow("Add Token", "Available")
+                        }
+                        if (song.libraryRemoveToken != null) {
+                            DetailRow("Remove Token", "Available")
+                        }
+                    }
+
+                    // Technical Information
+                    DetailSection("Technical Information") {
+                        song.endpointParams?.let { params ->
+                            DetailRow("Endpoint Params", if (params.isNotEmpty()) "Available" else "None")
+                        }
+                        song.thumbnail?.let { thumbnail ->
+                            DetailRow("Thumbnail URL", thumbnail)
+                        }
+                    }
+                } else {
+                    Text(
+                        "No media information available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DetailSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(2f),
+            textAlign = TextAlign.End
+        )
     }
 }

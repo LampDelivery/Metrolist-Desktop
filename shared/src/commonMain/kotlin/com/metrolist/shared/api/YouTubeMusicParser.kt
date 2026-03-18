@@ -1,18 +1,15 @@
 package com.metrolist.shared.api
 
-import com.metrolist.shared.model.YTItem
-import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.AlbumItem
 import com.metrolist.shared.model.ArtistItem
-import com.metrolist.shared.model.PlaylistItem
-import com.metrolist.shared.model.PodcastItem
-import com.metrolist.shared.model.EpisodeItem
 import com.metrolist.shared.model.ArtistTiny
-import com.metrolist.shared.model.AlbumPage
-import com.metrolist.shared.model.HomePageData
-import com.metrolist.shared.model.Chip
-import com.metrolist.shared.model.HomeSection
-import kotlinx.serialization.json.*
+import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.model.YTItem
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 object YouTubeMusicParser {
     fun parseHomeSections(json: JsonObject): Map<String, List<YTItem>> {

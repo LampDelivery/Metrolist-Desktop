@@ -44,7 +44,7 @@ dependencies {
     implementation(compose.runtime)
 
     implementation("com.materialkolor:material-kolor:1.7.1")
-    
+
     // Updated versions for March 2026/Kotlin 2.3.10 era
     implementation("sh.calvin.reorderable:reorderable:3.0.0")
     implementation("org.xerial:sqlite-jdbc:3.48.0.0")

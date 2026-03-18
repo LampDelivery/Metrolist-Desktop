@@ -1,43 +1,79 @@
 package com.metrolist.desktop.ui.screens
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AddAlert
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.metrolist.shared.model.*
 import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.ui.components.AsyncImage
 import com.metrolist.desktop.ui.components.YTGridItem
 import com.metrolist.desktop.ui.components.YTListItem
+import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.ArtistItem
+import com.metrolist.shared.model.ArtistSource
+import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.model.SongItem
 
 @Composable
 fun ArtistScreen(colorScheme: ColorScheme) {
@@ -80,16 +116,30 @@ fun ArtistScreen(colorScheme: ColorScheme) {
             // ── Header with banner ──────────────────────────────────────────────
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-                    // Check cached banner first to prevent YouTube flash
+                    // Check cached banner first to prevent flashing and ensure priority
                     val cachedBanner = artistInfo?.id?.let { AppState.artistBannerCache[it] }
-                    val bannerUrl = if (cachedBanner != null && AppState.artistBannerSource != ArtistSource.YOUTUBE) {
+                    val bannerUrl = if (cachedBanner != null) {
+                        // Always prioritize cached banner from non-YouTube sources
                         cachedBanner
                     } else {
                         when (AppState.artistBannerSource) {
                             ArtistSource.YOUTUBE -> artistInfo?.banner ?: artistInfo?.thumbnail
-                            ArtistSource.ITUNES -> AppState.artistPhotos.find { it.source == "iTunes" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
-                            ArtistSource.LASTFM -> AppState.selectedLastFmPhotoUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
-                            ArtistSource.SPOTIFY -> AppState.artistPhotos.find { it.source == "Spotify" }?.url ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            ArtistSource.ITUNES -> {
+                                val itunesUrl = AppState.artistPhotos.find { it.source == "iTunes" }?.url
+                                itunesUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            }
+                            ArtistSource.LASTFM -> {
+                                val lastfmUrl = AppState.selectedLastFmPhotoUrl
+                                lastfmUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            }
+                            ArtistSource.SOUNDCLOUD -> {
+                                val soundCloudUrl = AppState.artistPhotos.find { it.source == "SoundCloud" }?.url
+                                soundCloudUrl ?: (artistInfo?.banner ?: artistInfo?.thumbnail)
+                            }
+                            ArtistSource.CUSTOM -> {
+                                // Custom source fallback to YouTube
+                                artistInfo?.banner ?: artistInfo?.thumbnail
+                            }
                         }
                     }
 
@@ -253,16 +303,6 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                                         Text("Show All", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
-                                if (lastFmCount > 1) {
-                                    IconButton(
-                                        onClick = { AppState.toggleLastFmAutoCycle() },
-                                        colors = IconButtonDefaults.iconButtonColors(
-                                            contentColor = if (AppState.lastFmPhotoAutoCycle) colorScheme.primary else colorScheme.onSurfaceVariant
-                                        )
-                                    ) {
-                                        Icon(Icons.Outlined.Sync, contentDescription = if (AppState.lastFmPhotoAutoCycle) "Stop cycling" else "Auto cycle photos")
-                                    }
-                                }
                             }
                         }
                         LazyRow(
@@ -274,8 +314,8 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                                     "Last.fm" -> photo.url == AppState.selectedLastFmPhotoUrl
                                     "iTunes" -> AppState.artistBannerSource == ArtistSource.ITUNES &&
                                             AppState.artistPhotos.find { it.source == "iTunes" }?.url == photo.url
-                                    "Spotify" -> AppState.artistBannerSource == ArtistSource.SPOTIFY &&
-                                            AppState.artistPhotos.find { it.source == "Spotify" }?.url == photo.url
+                                    "SoundCloud" -> AppState.artistBannerSource == ArtistSource.SOUNDCLOUD &&
+                                            AppState.artistPhotos.find { it.source == "SoundCloud" }?.url == photo.url
                                     else -> false
                                 }
 
@@ -292,7 +332,7 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                                             when (photo.source) {
                                                 "Last.fm" -> AppState.selectLastFmPhoto(photo.url)
                                                 "iTunes" -> AppState.updateArtistBannerSource(ArtistSource.ITUNES)
-                                                "Spotify" -> AppState.updateArtistBannerSource(ArtistSource.SPOTIFY)
+                                                "SoundCloud" -> AppState.updateArtistBannerSource(ArtistSource.SOUNDCLOUD)
                                             }
                                         }
                                 ) {
@@ -391,6 +431,18 @@ fun ArtistScreen(colorScheme: ColorScheme) {
                                         AppState.fetchArtistSection(sectionTitle, browseLink.first!!, browseLink.second)
                                     }
                                 )
+                            } else if (sectionTitle != "Songs" && sectionItems.size > 6) {
+                                // Fallback "Show all" for sections without browse links but with many items
+                                Text(
+                                    "See all",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        AppState.artistSectionTitle = sectionTitle
+                                        AppState.artistSectionItems = sectionItems
+                                        AppState.isArtistSectionLoading = false
+                                    }
+                                )
                             }
                         }
                         Spacer(Modifier.height(12.dp))
@@ -471,8 +523,8 @@ fun ArtistPhotosFullScreen(
                     "Last.fm" -> photo.url == AppState.selectedLastFmPhotoUrl
                     "iTunes" -> AppState.artistBannerSource == ArtistSource.ITUNES &&
                             AppState.artistPhotos.find { it.source == "iTunes" }?.url == photo.url
-                    "Spotify" -> AppState.artistBannerSource == ArtistSource.SPOTIFY &&
-                            AppState.artistPhotos.find { it.source == "Spotify" }?.url == photo.url
+                    "SoundCloud" -> AppState.artistBannerSource == ArtistSource.SOUNDCLOUD &&
+                            AppState.artistPhotos.find { it.source == "SoundCloud" }?.url == photo.url
                     else -> false
                 }
 
@@ -488,7 +540,7 @@ fun ArtistPhotosFullScreen(
                             when (photo.source) {
                                 "Last.fm" -> AppState.selectLastFmPhoto(photo.url)
                                 "iTunes" -> AppState.updateArtistBannerSource(ArtistSource.ITUNES)
-                                "Spotify" -> AppState.updateArtistBannerSource(ArtistSource.SPOTIFY)
+                                "SoundCloud" -> AppState.updateArtistBannerSource(ArtistSource.SOUNDCLOUD)
                             }
                             onBack()
                         },

@@ -9,11 +9,11 @@ import javafx.embed.swing.JFXPanel
 import javafx.scene.Scene
 import javafx.scene.web.WebEngine
 import javafx.scene.web.WebView
-import javax.swing.BoxLayout
-import javax.swing.JPanel
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.URI
+import javax.swing.BoxLayout
+import javax.swing.JPanel
 
 @Composable
 fun EmbeddedSignInView(

@@ -194,6 +194,6 @@ fun List<YTItem>.filterYoutubeShorts(hideYoutubeShorts: Boolean): List<YTItem> =
 
 enum class LyricsProvider { AUTO, BETTERLYRICS, SIMPMUSIC, LRCLIB, LYRICSPLUS, YOUTUBE }
 
-enum class ArtistSource { YOUTUBE, ITUNES, LASTFM, SPOTIFY }
+enum class ArtistSource { YOUTUBE, ITUNES, LASTFM, SOUNDCLOUD, CUSTOM }
 
 data class ArtistPhoto(val url: String, val source: String)

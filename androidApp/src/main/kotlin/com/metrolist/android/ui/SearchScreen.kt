@@ -7,8 +7,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.shared.model.YTItem
+import com.metrolist.shared.state.GlobalYouTubeRepository
 import kotlinx.coroutines.launch
 
 @Composable

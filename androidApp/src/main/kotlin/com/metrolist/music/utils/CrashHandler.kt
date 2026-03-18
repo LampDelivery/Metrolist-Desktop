@@ -5,11 +5,10 @@
 
 package com.metrolist.music.utils
 
+// import com.metrolist.music.ui.screens.CrashActivity // Need to port CrashActivity later
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import com.metrolist.music.BuildConfig
-// import com.metrolist.music.ui.screens.CrashActivity // Need to port CrashActivity later
 import timber.log.Timber
 import java.io.PrintWriter
 import java.io.StringWriter

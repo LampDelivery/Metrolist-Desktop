@@ -2,15 +2,40 @@ package com.metrolist.desktop.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.OfflinePin
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,10 +55,64 @@ import com.metrolist.desktop.utils.HistoryStat
 @Composable
 fun LocalPlaylistScreen(type: String, colorScheme: ColorScheme) {
     when (type) {
+        "liked" -> LikedScreen(colorScheme)
         "top50" -> Top50Screen(colorScheme)
         "downloaded" -> DownloadedScreen(colorScheme)
         "cached" -> CachedScreen(colorScheme)
         "uploaded" -> UploadedScreen(colorScheme)
+    }
+}
+
+// ──────────────────────────────────────────────────────────── Liked Songs ──
+
+@Composable
+private fun LikedScreen(colorScheme: ColorScheme) {
+    val likedIds = AppState.likedSongIds.toList()
+
+    Column(Modifier.fillMaxSize()) {
+        LocalPlaylistHeader(
+            title = "Liked Songs",
+            subtitle = "${likedIds.size} songs • Your liked songs",
+            icon = Icons.Filled.Favorite,
+            iconTint = Color.White,
+            iconBackground = colorScheme.error,
+            colorScheme = colorScheme
+        ) {
+            Button(
+                onClick = { if (likedIds.isNotEmpty()) AppState.playFromId(likedIds.first()) },
+                enabled = likedIds.isNotEmpty()
+            ) {
+                Icon(Icons.Outlined.PlayArrow, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Play")
+            }
+            OutlinedButton(
+                onClick = { if (likedIds.isNotEmpty()) AppState.playFromId(likedIds.shuffled().first()) },
+                enabled = likedIds.isNotEmpty()
+            ) {
+                Icon(Icons.Default.Shuffle, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Shuffle")
+            }
+        }
+
+        if (likedIds.isEmpty()) {
+            EmptyState(
+                icon = Icons.Filled.Favorite,
+                message = "No liked songs",
+                hint = "Songs you like will appear here.\nTap the heart icon on any song to add it to your liked songs.",
+                colorScheme = colorScheme
+            )
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                itemsIndexed(likedIds, key = { _, id -> id }) { idx, songId ->
+                    LikedSongRow(rank = idx + 1, songId = songId, colorScheme = colorScheme)
+                }
+            }
+        }
     }
 }
 
@@ -298,6 +377,54 @@ private fun RankedSongRow(rank: Int, stat: HistoryStat, colorScheme: ColorScheme
             "${stat.playCount} plays",
             style = MaterialTheme.typography.labelSmall,
             color = colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+        )
+    }
+}
+
+@Composable
+private fun LikedSongRow(rank: Int, songId: String, colorScheme: ColorScheme) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { AppState.playFromId(songId) }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "$rank",
+            style = MaterialTheme.typography.labelMedium,
+            color = colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            modifier = Modifier.width(28.dp),
+            fontWeight = FontWeight.Bold
+        )
+        AsyncImage(
+            url = "https://img.youtube.com/vi/$songId/maxresdefault.jpg",
+            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Liked Song",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                songId,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            Icons.Default.PlayArrow,
+            contentDescription = "Play",
+            tint = colorScheme.primary,
+            modifier = Modifier.size(20.dp)
         )
     }
 }

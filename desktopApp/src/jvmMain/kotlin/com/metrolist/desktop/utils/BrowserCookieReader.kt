@@ -1,9 +1,8 @@
 package com.metrolist.desktop.utils
 
+import com.sun.jna.platform.win32.Crypt32Util
 import java.io.File
 import java.sql.DriverManager
-import java.util.Base64
-import com.sun.jna.platform.win32.Crypt32Util
 
 object BrowserCookieReader {
     private fun getChromeCookiePath(): File? {

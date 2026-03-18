@@ -1,12 +1,12 @@
 package com.metrolist.desktop.utils
 
+import com.metrolist.desktop.state.AppState
+import com.metrolist.shared.model.SongItem
 import dev.firstdark.rpc.DiscordRpc
 import dev.firstdark.rpc.enums.ActivityType
 import dev.firstdark.rpc.handlers.RPCEventHandler
 import dev.firstdark.rpc.models.DiscordRichPresence
 import dev.firstdark.rpc.models.User
-import com.metrolist.desktop.state.AppState
-import com.metrolist.shared.model.SongItem
 
 object DiscordRPCManager {
     private const val DEFAULT_CLIENT_ID = "1481169442346893362"

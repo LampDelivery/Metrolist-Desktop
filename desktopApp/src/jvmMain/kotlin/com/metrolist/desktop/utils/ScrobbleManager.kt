@@ -1,9 +1,13 @@
 package com.metrolist.desktop.utils
 
+import com.metrolist.desktop.state.AppState
 import com.metrolist.shared.api.lastfm.LastFM
 import com.metrolist.shared.model.SongItem
-import com.metrolist.desktop.state.AppState
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.min
 
 class ScrobbleManager(

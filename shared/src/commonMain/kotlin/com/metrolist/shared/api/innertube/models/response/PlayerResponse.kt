@@ -1,7 +1,6 @@
 package com.metrolist.shared.api.innertube.models.response
 
 import com.metrolist.shared.api.innertube.models.Thumbnails
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable

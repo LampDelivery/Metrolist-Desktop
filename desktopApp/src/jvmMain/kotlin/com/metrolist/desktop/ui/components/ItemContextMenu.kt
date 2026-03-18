@@ -3,11 +3,18 @@ package com.metrolist.desktop.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.metrolist.desktop.state.AppState
-import com.metrolist.shared.model.*
+import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.ArtistItem
+import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.model.SongItem
 
 @Composable
 private fun MenuSection(vararg items: @Composable () -> Unit) {

@@ -6,7 +6,19 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -15,9 +27,40 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Crop
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.HideImage
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.TableRows
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.ViewCompact
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,11 +68,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.metrolist.desktop.constants.DefaultThemeColor
 import com.metrolist.desktop.state.AppState
 import com.metrolist.desktop.state.ThemeMode
-import com.metrolist.desktop.constants.SliderStyle
 import com.metrolist.desktop.ui.components.EnumDialog
-import com.metrolist.desktop.constants.DefaultThemeColor
 
 @Composable
 fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
@@ -74,8 +116,17 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
                 )
             }
 
-            SettingsNavigationWithIcon(
-                title = "Theme",
+                SettingsToggleWithIcon(
+ title = "Pure Black",
+ subtitle = "Use pure black background in dark mode (Night Mode)",
+ icon = Icons.Outlined.Contrast,
+ checked = AppState.pureBlack,
+ onCheckedChange = { AppState.togglePureBlack(it) },
+ colorScheme = colorScheme
+ )
+
+ SettingsNavigationWithIcon(
+ title = "Theme",
                 subtitle = "Color palette and theme customization",
                 icon = Icons.Outlined.Palette,
                 colorScheme = colorScheme,
