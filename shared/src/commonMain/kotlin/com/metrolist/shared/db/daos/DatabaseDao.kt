@@ -75,15 +75,21 @@ interface DatabaseDao {
     fun playlistSongs(playlistId: String): Flow<List<PlaylistSongMap>>
 
     @Transaction
-    @Query("SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY inLibrary")
+    @Query(
+        "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY inLibrary",
+    )
     fun artistSongsByCreateDateAsc(artistId: String): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY title")
+    @Query(
+        "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY title",
+    )
     fun artistSongsByNameAsc(artistId: String): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY totalPlayTime")
+    @Query(
+        "SELECT song.* FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = :artistId AND inLibrary IS NOT NULL ORDER BY totalPlayTime",
+    )
     fun artistSongsByPlayTimeAsc(artistId: String): Flow<List<Song>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -164,6 +170,12 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE id = :songId")
     suspend fun getSongById(songId: String): SongEntity?
 
+    @Query("UPDATE song SET isCached = :isCached WHERE id = :songId")
+    suspend fun updateCachedInfo(
+        songId: String,
+        isCached: Boolean,
+    )
+
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
 
@@ -172,7 +184,7 @@ interface DatabaseDao {
 
     @Query("DELETE FROM search_history")
     suspend fun clearSearchHistory()
-    
+
     @Query("SELECT * FROM event ORDER BY id DESC")
     fun events(): Flow<List<Event>>
 }

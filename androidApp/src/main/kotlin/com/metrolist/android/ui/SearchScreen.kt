@@ -1,6 +1,8 @@
 package com.metrolist.android.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,30 +21,34 @@ fun SearchScreen() {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+    ) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search music") },
             singleLine = true,
-            keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-            keyboardActions = androidx.compose.ui.text.input.KeyboardActions(onSearch = {
-                if (query.isBlank()) return@KeyboardActions
-                scope.launch {
-                    isLoading = true
-                    error = null
-                    try {
-                        results = GlobalYouTubeRepository.instance.search(query).items
-                    } catch (t: Throwable) {
-                        error = t.message ?: "Unknown error"
-                    } finally {
-                        isLoading = false
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+            keyboardActions =
+                KeyboardActions(onSearch = {
+                    if (query.isBlank()) return@KeyboardActions
+                    scope.launch {
+                        isLoading = true
+                        error = null
+                        try {
+                            results = GlobalYouTubeRepository.instance.search(query)
+                        } catch (t: Throwable) {
+                            error = t.message ?: "Unknown error"
+                        } finally {
+                            isLoading = false
+                        }
                     }
-                }
-            })
+                }),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -53,9 +59,11 @@ fun SearchScreen() {
                     CircularProgressIndicator()
                 }
             }
+
             error != null -> {
                 Text("Error: $error", color = MaterialTheme.colorScheme.error)
             }
+
             else -> {
                 Column(modifier = Modifier.fillMaxSize()) {
                     results.forEach { item ->

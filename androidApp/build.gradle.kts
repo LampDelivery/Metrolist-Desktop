@@ -26,7 +26,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
         debug {
@@ -55,14 +55,15 @@ android {
 
 dependencies {
     implementation(project(":shared"))
-    
+
     // Core Android / Compose
     implementation(libs.activity)
     implementation(libs.appcompat)
     implementation(libs.viewmodel.compose)
     implementation(libs.navigation.compose)
     implementation(libs.material3)
-    
+    implementation("androidx.compose.material:material-icons-core:1.7.6")
+
     // Dependency Injection
     implementation(libs.hilt)
     ksp(libs.hilt.compiler)
@@ -88,6 +89,6 @@ dependencies {
     implementation(libs.shimmer)
     implementation(libs.palette)
     implementation(libs.materialKolor)
-    
+
     implementation(libs.timber)
 }
