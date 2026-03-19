@@ -58,7 +58,7 @@ import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
 import com.metrolist.desktop.ui.components.*
 import com.metrolist.desktop.ui.screens.*
-import com.metrolist.desktop.utils.ModernTrayManager
+import com.metrolist.desktop.utils.TrayManager
 import com.metrolist.desktop.utils.WindowsMediaTransportControls
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -1007,13 +1007,13 @@ fun main() {
 
             // Initialize modern tray menu
             LaunchedEffect(window) {
-                ModernTrayManager.initTray()
+                TrayManager.initialize(window)
                 WindowsMediaTransportControls.initialize(window)
             }
 
             // Update tray icon when playback state changes
             LaunchedEffect(AppState.isPlaying, AppState.currentTrack) {
-                ModernTrayManager.updateTrayColor(AppState.seedColor.toAwtColor())
+                TrayManager.updateTrayIcon()
                 WindowsMediaTransportControls.updateMediaState()
             }
 
