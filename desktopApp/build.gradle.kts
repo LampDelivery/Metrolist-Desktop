@@ -138,7 +138,7 @@ compose.desktop {
         mainClass = "com.metrolist.desktop.MainKt"
         nativeDistributions {
             val formats = when (platform) {
-                "win"  -> arrayOf(TargetFormat.Msi)
+                "win"  -> arrayOf(TargetFormat.Msi, TargetFormat.Exe)
                 "mac"  -> arrayOf(TargetFormat.Dmg)
                 else   -> arrayOf(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
             }

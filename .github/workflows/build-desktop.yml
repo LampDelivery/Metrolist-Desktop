@@ -137,8 +137,15 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: Metrolist-Windows
+          name: Metrolist-Windows-MSI
           path: desktopApp/build/compose/binaries/main/msi/*.msi
+
+      - name: Upload artifacts (Windows EXE)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metrolist-Windows-EXE
+          path: desktopApp/build/compose/binaries/main/exe/*.exe
 
       - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'
