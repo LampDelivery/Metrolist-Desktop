@@ -9,7 +9,7 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.EaseInBack
 import androidx.compose.animation.core.EaseOutBack
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
+// Removed incorrect Spring import
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -178,7 +178,7 @@ fun AnimatedGradientBackground(color: Color) {
     }
 
     // Three independent rotations: two full sweeps (opp. directions) + one slow oscillation.
-    // Their interference creates Apple Music's swirling color liquid effect.
+    // Animate blur radius and layer alpha for a more dynamic effect.
     val infiniteTransition = rememberInfiniteTransition(label = "gradient")
     val rot1 by infiniteTransition.animateFloat(0f, 360f,
         infiniteRepeatable(tween(90000, easing = LinearEasing), AnimationRepeatMode.Restart), label = "rot1")
@@ -186,6 +186,18 @@ fun AnimatedGradientBackground(color: Color) {
         infiniteRepeatable(tween(75000, easing = LinearEasing), AnimationRepeatMode.Restart), label = "rot2")
     val rot3 by infiniteTransition.animateFloat(-18f, 18f,
         infiniteRepeatable(tween(55000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "rot3")
+
+    // Animate blur radius between 80dp and 120dp
+    val blurRadius by infiniteTransition.animateFloat(80f, 120f,
+        infiniteRepeatable(tween(6000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "blurRadius")
+
+    // Animate layer alpha for depth
+    val layerAlpha1 by infiniteTransition.animateFloat(0.85f, 1f,
+        infiniteRepeatable(tween(7000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "layerAlpha1")
+    val layerAlpha2 by infiniteTransition.animateFloat(0.65f, 0.85f,
+        infiniteRepeatable(tween(9000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "layerAlpha2")
+    val layerAlpha3 by infiniteTransition.animateFloat(0.45f, 0.65f,
+        infiniteRepeatable(tween(11000, easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)), AnimationRepeatMode.Reverse), label = "layerAlpha3")
 
     // Fade art in once loaded; fall back to near-black tinted base while loading
     val artAlpha by animateFloatAsState(if (bitmap != null) 1f else 0f, tween(700), label = "artAlpha")
@@ -196,28 +208,27 @@ fun AnimatedGradientBackground(color: Color) {
 
     Box(Modifier.fillMaxSize().clip(RectangleShape).background(baseColor)) {
         // Art layer — 3 scaled + rotated copies of the album art, blurred together.
-        // This is the same technique Apple Music uses: twist copies of the art, then blur.
         val art = bitmap
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .blur(100.dp, BlurredEdgeTreatment.Unbounded)
+                .blur(blurRadius.dp, BlurredEdgeTreatment.Unbounded)
                 .alpha(artAlpha)
         ) {
             if (art != null) {
                 // Layer 1 — slow clockwise, large scale
                 Image(art, null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 3.0f; scaleY = 3.0f; rotationZ = rot1 })
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 3.0f; scaleY = 3.0f; rotationZ = rot1; alpha = layerAlpha1 })
                 // Layer 2 — counter-clockwise, slightly different scale + lower opacity
                 Image(art, null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.5f; scaleY = 2.5f; rotationZ = rot2; alpha = 0.75f })
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.5f; scaleY = 2.5f; rotationZ = rot2; alpha = layerAlpha2 })
                 // Layer 3 — slow oscillation, creates color interference with the other two
                 Image(art, null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.8f; scaleY = 2.8f; rotationZ = rot3; alpha = 0.55f })
+                    modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 2.8f; scaleY = 2.8f; rotationZ = rot3; alpha = layerAlpha3 })
             }
         }
 
-        // Radial vignette — dark edges, lit center (Apple Music signature)
+        // Radial vignette — dark edges, lit center
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.radialGradient(
                 colorStops = arrayOf(0f to Color.Transparent, 0.40f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.82f)),
@@ -248,16 +259,19 @@ fun FloatingBottomPlayerContent(colorScheme: ColorScheme) {
         val width = maxWidth
         val playerWidth = if (width < 600.dp) width - 32.dp else 520.dp
         
+        val frosted = AppState.fullGradientBackground
+        val playerBgColor = if (frosted) Color.White.copy(alpha = 0.10f) else colorScheme.surfaceContainer.copy(alpha = 0.98f)
         Surface(
             modifier = Modifier
                 .width(playerWidth)
                 .height(80.dp)
                 .scale(scale)
                 .hoverable(interactionSource)
-                .clickable { AppState.isExpanded = !AppState.isExpanded },
-            color = colorScheme.surfaceContainer.copy(alpha = 0.98f),
+                .clickable { AppState.isExpanded = !AppState.isExpanded }
+                .then(if (frosted) Modifier.blur(32.dp) else Modifier),
+            color = playerBgColor,
             shape = CircleShape,
-            shadowElevation = 16.dp,
+            shadowElevation = if (frosted) 0.dp else 16.dp,
             border = BorderStroke(1.dp, colorScheme.outline)
         ) {
             Row(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -342,12 +356,30 @@ fun ExpandedPlayerView() {
         if (AppState.animatedGradient) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedGradientBackground(AppState.seedColor)
+                // Apply frosted blur in front of gradient only in expanded mode
+                if (AppState.fullGradientBackground) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .blur(32.dp, BlurredEdgeTreatment.Unbounded)
+                            .background(Color.White.copy(alpha = 0.10f))
+                    ) {}
+                }
             }
         } else {
             val gradientColors = remember(AppState.seedColor) {
                 PlayerColorExtractor.getGradientColors(AppState.seedColor)
             }
             Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(gradientColors)))
+            // Apply frosted blur in front of gradient only in expanded mode
+            if (AppState.fullGradientBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(32.dp, BlurredEdgeTreatment.Unbounded)
+                        .background(Color.White.copy(alpha = 0.10f))
+                ) {}
+            }
         }
         
         if (isNarrow) {
@@ -372,8 +404,9 @@ fun ExpandedPlayerView() {
         } else {
             val panelSide = AppState.playerPanelSide
             Row(modifier = Modifier.fillMaxSize().padding(top = 48.dp)) {
+                val sidePanelBg = if (AppState.fullGradientBackground) Color.Black.copy(alpha = 0.25f) else Color.Transparent
                 if (panelSide == "left") {
-                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = Color.Transparent) {
+                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = sidePanelBg) {
                         ExpandedTabsContent()
                     }
                 }
@@ -387,7 +420,7 @@ fun ExpandedPlayerView() {
                     )
                 }
                 if (panelSide != "left") {
-                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = Color.Transparent) {
+                    Surface(modifier = Modifier.width(450.dp).fillMaxHeight(), color = sidePanelBg) {
                         ExpandedTabsContent()
                     }
                 }
@@ -708,7 +741,7 @@ fun MetrolistPlayPauseButton(
             isHovered -> 1.08f
             else -> 1f
         },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
+        animationSpec = spring(dampingRatio = 0.75f)
     )
 
     val width by animateDpAsState(if (isWide) 120.dp else 56.dp)

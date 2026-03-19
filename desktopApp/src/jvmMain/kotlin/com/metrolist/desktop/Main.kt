@@ -58,6 +58,7 @@ import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
 import com.metrolist.desktop.ui.components.*
 import com.metrolist.desktop.ui.screens.*
+import com.metrolist.desktop.ui.layouts.AppLayoutManager
 import com.metrolist.desktop.utils.TrayManager
 import com.metrolist.desktop.utils.WindowsMediaTransportControls
 import sh.calvin.reorderable.ReorderableItem

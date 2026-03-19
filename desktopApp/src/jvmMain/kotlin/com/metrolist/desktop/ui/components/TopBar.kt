@@ -78,6 +78,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -111,7 +112,13 @@ fun WindowScope.CustomTitleBar(
     )
 
     WindowDraggableArea {
-        Surface(color = colorScheme.surfaceContainer.copy(alpha = backgroundAlpha), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        val frosted = AppState.fullGradientBackground
+        val bgColor = if (frosted) Color.White.copy(alpha = 0.10f) else colorScheme.surfaceContainer.copy(alpha = backgroundAlpha)
+        Surface(
+            color = bgColor,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+                .then(if (frosted) Modifier.blur(32.dp) else Modifier)
+        ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), 
                 verticalAlignment = Alignment.CenterVertically

@@ -50,6 +50,13 @@ enum class ThemeMode {
     AUTO  // Follows system theme
 }
 
+enum class AppLayout {
+    CANVAS,      // Clean foundation - sidebar + main content + bottom player
+    STUDIO,      // Expanded workspace - wide sidebar with search, floating controls
+    STAGE,       // Performance focused - player in topbar, search in sidebar
+    FLOW         // Streamlined experience - external player controls, continuous flow
+}
+
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
 
 // Language and country mappings
@@ -379,6 +386,7 @@ private var libraryViewTypeInternal by mutableStateOf(
     var showAppearanceSettings by mutableStateOf(false)
     var showThemeSettings by mutableStateOf(false)
     var showSliderStyleDialog by mutableStateOf(false)
+    var showLayoutDialog by mutableStateOf(false)
     var showPlayerSettings by mutableStateOf(false)
     var showContentSettings by mutableStateOf(false)
     var showAiSettings by mutableStateOf(false)
@@ -443,6 +451,38 @@ private var libraryViewTypeInternal by mutableStateOf(
 
     var swapPlayerControls by mutableStateOf(prefs.getBoolean("SWAP_PLAYER_CONTROLS", false))
     var animatedGradient by mutableStateOf(prefs.getBoolean("ANIMATED_GRADIENT", false))
+
+    // --- Cider-inspired UI customizations ---
+    // App layout: matches Cider's design options
+    var appLayout by mutableStateOf(
+        when (prefs.get("APP_LAYOUT", "CANVAS")) {
+            "STUDIO" -> AppLayout.STUDIO
+            "STAGE" -> AppLayout.STAGE
+            "FLOW" -> AppLayout.FLOW
+            else -> AppLayout.CANVAS
+        }
+    )
+    fun updateAppLayout(layout: AppLayout) {
+        appLayout = layout
+        prefs.put("APP_LAYOUT", layout.name)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Full gradient background toggle
+    var fullGradientBackground by mutableStateOf(prefs.getBoolean("FULL_GRADIENT_BACKGROUND", false))
+    fun toggleFullGradientBackground(enabled: Boolean) {
+        fullGradientBackground = enabled
+        prefs.putBoolean("FULL_GRADIENT_BACKGROUND", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
+
+    // Persistent side drawer toggle
+    var persistentSideDrawer by mutableStateOf(prefs.getBoolean("PERSISTENT_SIDE_DRAWER", false))
+    fun togglePersistentSideDrawer(enabled: Boolean) {
+        persistentSideDrawer = enabled
+        prefs.putBoolean("PERSISTENT_SIDE_DRAWER", enabled)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
 
     var currentLyrics by mutableStateOf<String?>(null)
     var isLyricsLoading by mutableStateOf(false)
