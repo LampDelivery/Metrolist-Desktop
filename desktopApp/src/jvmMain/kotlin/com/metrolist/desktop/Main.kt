@@ -73,6 +73,16 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
     
     MetrolistTheme(seedColor = animatedPrimary) {
         val colorScheme = MaterialTheme.colorScheme
+        // Push Compose Material colors to the TrayManager whenever the colorScheme changes
+        LaunchedEffect(colorScheme) {
+            try {
+                val bg = colorScheme.background.toArgb()
+                val fg = colorScheme.onSurface.toArgb()
+                val border = colorScheme.outline.toArgb()
+                val dark = colorScheme.background.luminance() < 0.5f
+                TrayManager.setThemeColors(bg, fg, border, dark)
+            } catch (_: Exception) {}
+        }
         val windowCornerRadius = if (AppState.isMaximized) 0.dp else 12.dp
         val outlineColor = if (AppState.isWindowFocused && !AppState.isMaximized) colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent
         
