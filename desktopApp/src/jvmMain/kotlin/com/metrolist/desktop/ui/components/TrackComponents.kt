@@ -257,7 +257,7 @@ fun YTGridItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
                                     Icon(Icons.Outlined.FavoriteBorder, null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 }
                                 IconButton(
-                                    onClick = { /* TODO: share */ },
+                                    onClick = { /* Share functionality not yet implemented */ },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(MetrolistShareIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -580,8 +580,7 @@ fun YTListItem(item: YTItem, colorScheme: ColorScheme, onClick: () -> Unit) {
 
                         // Downloaded icon - placeholder for when download system is implemented
                         // TODO: Add actual download state checking when download system is ready
-                        // For now, just show offline icon for demo purposes on some tracks
-                        if (item.id.hashCode() % 5 == 0) { // Demo: show on every 5th track
+            if (AppState.downloadStates[item.id] == com.metrolist.desktop.utils.DownloadState.DOWNLOADED) {
                             Icon(
                                 imageVector = Icons.Outlined.Download,
                                 contentDescription = "Downloaded",

@@ -75,18 +75,20 @@ fun HomeScreen(colorScheme: ColorScheme) {
                 )
             }
 
-            // Sections
-            homePageData.sections.forEachIndexed { index, section ->
-                val sectionSongs = section.items.filterIsInstance<SongItem>()
-                val isSongsOnly = section.items.isNotEmpty() && section.items.all { it is SongItem }
+            // Sections - filtered by user visibility preferences
+            homePageData.sections
+                .filter { section -> AppState.shouldShowHomeSection(section) }
+                .forEachIndexed { index, section ->
+                    val sectionSongs = section.items.filterIsInstance<SongItem>()
+                    val isSongsOnly = section.items.isNotEmpty() && section.items.all { it is SongItem }
 
-                item(key = "section_$index") {
-                    if (section.isListStyle || isSongsOnly) {
-                        SongsGridSection(section, sectionSongs, colorScheme)
-                    } else {
-                        CarouselSection(section, sectionSongs, colorScheme)
+                    item(key = "section_${section.title}_$index") {
+                        if (section.isListStyle || isSongsOnly) {
+                            SongsGridSection(section, sectionSongs, colorScheme)
+                        } else {
+                            CarouselSection(section, sectionSongs, colorScheme)
+                        }
                     }
-                }
             }
         }
     }

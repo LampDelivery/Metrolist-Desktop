@@ -3,6 +3,7 @@ package com.metrolist.desktop.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -39,6 +40,9 @@ fun SongContextMenu(
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         val isLiked = song.id in AppState.likedSongIds
 
+        val isDownloaded = AppState.downloadStates[song.id] == com.metrolist.desktop.utils.DownloadState.DOWNLOADED
+        val isDownloading = AppState.downloadStates[song.id] == com.metrolist.desktop.utils.DownloadState.DOWNLOADING
+
         MenuItem("Play Next") {
             AppState.playNext(song)
             onDismiss()
@@ -57,6 +61,27 @@ fun SongContextMenu(
         ) {
             AppState.toggleLike(song)
             onDismiss()
+        }
+        if (isDownloading) {
+            // Show progress indicator
+            val progress = AppState.downloadProgress[song.id] ?: 0f
+            MenuItem(
+                text = "Downloading... ${(progress * 100).toInt()}%",
+                leadingIcon = Icons.Outlined.Download,
+                onClick = { onDismiss() }
+            )
+        } else if (isDownloaded) {
+            MenuItem("Remove Download", leadingIcon = Icons.Outlined.Download) {
+                com.metrolist.desktop.utils.DownloadManager.removeDownloadMetadata(song.id)
+                com.metrolist.desktop.state.AppState.downloadedFiles = com.metrolist.desktop.utils.DownloadManager.getDownloadedFiles()
+                com.metrolist.desktop.state.AppState.downloadStates = com.metrolist.desktop.utils.DownloadManager.downloadStates.value
+                onDismiss()
+            }
+        } else {
+            MenuItem("Download", leadingIcon = Icons.Outlined.Download) {
+                com.metrolist.desktop.utils.DownloadManager.download(song)
+                onDismiss()
+            }
         }
         if (AppState.isSignedIn) {
             MenuItem("Add to Playlist") {

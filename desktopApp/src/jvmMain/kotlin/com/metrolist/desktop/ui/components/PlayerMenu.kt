@@ -222,15 +222,42 @@ fun PlayerMenuPanel(
                         }
 
                         // Download (Future Implementation)
-                        MenuActionRow(
-                            icon = Icons.Outlined.Download,
-                            title = "Download",
-                            subtitle = "Save for offline listening",
-                            colorScheme = colorScheme,
-                            enabled = false
-                        ) {
-                            // TODO: Implement download functionality
-                        }
+                        val isDownloaded = currentTrack?.id?.let { AppState.downloadStates[it] == com.metrolist.desktop.utils.DownloadState.DOWNLOADED } ?: false
+                        val isDownloading = currentTrack?.id?.let { AppState.downloadStates[it] == com.metrolist.desktop.utils.DownloadState.DOWNLOADING } ?: false
+                            if (isDownloading && currentTrack != null) {
+                                val progress = AppState.downloadProgress[currentTrack.id] ?: 0f
+                                MenuActionRow(
+                                    icon = Icons.Outlined.Download,
+                                    title = "Downloading... ${(progress * 100).toInt()}%",
+                                    subtitle = "Save for offline listening",
+                                    colorScheme = colorScheme,
+                                    enabled = false
+                                ) {
+                                    onDismiss()
+                                }
+                            } else if (isDownloaded && currentTrack != null) {
+                                MenuActionRow(
+                                    icon = Icons.Outlined.Download,
+                                    title = "Remove Download",
+                                    subtitle = "Remove from offline listening",
+                                    colorScheme = colorScheme
+                                ) {
+                                    com.metrolist.desktop.utils.DownloadManager.removeDownloadMetadata(currentTrack.id)
+                                    AppState.downloadedFiles = com.metrolist.desktop.utils.DownloadManager.getDownloadedFiles()
+                                    AppState.downloadStates = com.metrolist.desktop.utils.DownloadManager.downloadStates.value
+                                    onDismiss()
+                                }
+                            } else if (currentTrack != null) {
+                                MenuActionRow(
+                                    icon = Icons.Outlined.Download,
+                                    title = "Download",
+                                    subtitle = "Save for offline listening",
+                                    colorScheme = colorScheme
+                                ) {
+                                    com.metrolist.desktop.utils.DownloadManager.download(currentTrack)
+                                    onDismiss()
+                                }
+                            }
                     }
                 }
             }

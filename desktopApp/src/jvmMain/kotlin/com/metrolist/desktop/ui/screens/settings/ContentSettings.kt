@@ -502,6 +502,30 @@ fun SectionVisibilityDialog(
     onDismiss: () -> Unit,
     colorScheme: ColorScheme
 ) {
+    val sections = AppState.homePageData.sections
+
+    if (sections.isEmpty()) {
+        // If no sections available, show a message
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Home Page Sections") },
+            text = {
+                Text(
+                    "No home sections available. Please load the home page first.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.onSurfaceVariant
+                )
+            },
+            containerColor = colorScheme.surfaceContainerHigh
+        )
+        return
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
@@ -516,99 +540,28 @@ fun SectionVisibilityDialog(
             LazyColumn {
                 item {
                     Text(
-                        "Show or hide sections on the home page",
+                        "Show or hide sections on the home page (${sections.size} sections available)",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
 
-                item {
-                    SettingsToggle(
-                        title = "Mixed for You",
-                        subtitle = "Personalized music mixes",
-                        checked = AppState.showMixedForYou,
-                        onCheckedChange = { AppState.toggleShowMixedForYou(it) },
-                        colorScheme = colorScheme
-                    )
-                }
+                // Show actual dynamic sections from API
+                items(sections) { section ->
+                    val isVisible = AppState.homeSectionVisibility.getOrDefault(section.title, true)
 
-                item {
                     SettingsToggle(
-                        title = "Listen Again",
-                        subtitle = "Recently played tracks and albums",
-                        checked = AppState.showListenAgain,
-                        onCheckedChange = { AppState.toggleShowListenAgain(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Recently Played",
-                        subtitle = "Your recent listening history",
-                        checked = AppState.showRecentlyPlayed,
-                        onCheckedChange = { AppState.toggleShowRecentlyPlayed(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Quick Picks",
-                        subtitle = "Songs selected for you",
-                        checked = AppState.showQuickPicks,
-                        onCheckedChange = { AppState.toggleShowQuickPicks(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Charts",
-                        subtitle = "Trending and popular music",
-                        checked = AppState.showCharts,
-                        onCheckedChange = { AppState.toggleShowCharts(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "New Releases",
-                        subtitle = "Latest albums and singles",
-                        checked = AppState.showNewReleases,
-                        onCheckedChange = { AppState.toggleShowNewReleases(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Made for You",
-                        subtitle = "Personalized playlists and stations",
-                        checked = AppState.showMadeForYou,
-                        onCheckedChange = { AppState.toggleShowMadeForYou(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Similar Artists",
-                        subtitle = "Artists and music similar to your taste",
-                        checked = AppState.showSimilarTo,
-                        onCheckedChange = { AppState.toggleShowSimilarTo(it) },
-                        colorScheme = colorScheme
-                    )
-                }
-
-                item {
-                    SettingsToggle(
-                        title = "Trending Music",
-                        subtitle = "Popular music and viral tracks",
-                        checked = AppState.showTrendingMusic,
-                        onCheckedChange = { AppState.toggleShowTrendingMusic(it) },
+                        title = section.title,
+                        subtitle = when {
+                            section.subtitle != null -> section.subtitle
+                            section.items.isNotEmpty() -> "${section.items.size} items"
+                            else -> "Dynamic section from home page"
+                        },
+                        checked = isVisible,
+                        onCheckedChange = { visible ->
+                            AppState.toggleHomeSectionVisibility(section.title, visible)
+                        },
                         colorScheme = colorScheme
                     )
                 }

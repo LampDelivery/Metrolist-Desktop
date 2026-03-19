@@ -6,11 +6,9 @@ import kotlinx.serialization.Serializable
 data class MusicShelfRenderer(
     val title: Runs? = null,
     val contents: List<Content>? = null,
-    // val continuations: List<Continuation>? = null,
 ) {
     @Serializable
     data class Content(
         val musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer? = null,
-        // val continuationItemRenderer: ContinuationItemRenderer? = null,
     )
 }

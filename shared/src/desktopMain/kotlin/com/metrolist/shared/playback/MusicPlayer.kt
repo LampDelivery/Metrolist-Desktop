@@ -59,19 +59,23 @@ actual class MusicPlayer actual constructor() {
     }
 
     actual fun play(song: SongItem, url: String) {
+        println("[MusicPlayer] play() called for song: ${song.title}, url: $url")
         _currentSong.value = song
         mpvPlayer.play(url)
     }
 
     actual fun pause() {
+        println("[MusicPlayer] pause() called")
         mpvPlayer.pause()
     }
 
     actual fun resume() {
+        println("[MusicPlayer] resume() called")
         mpvPlayer.resume()
     }
 
     actual fun stop() {
+        println("[MusicPlayer] stop() called")
         mpvPlayer.stop()
     }
 

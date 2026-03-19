@@ -1,5 +1,13 @@
 @file:Suppress("UNUSED_VARIABLE", "NAME_SHADOWING", "UNUSED_PARAMETER")
 package com.metrolist.desktop.state
+import com.metrolist.desktop.ui.screens.LibraryViewType
+
+import androidx.compose.ui.graphics.Color
+import com.metrolist.desktop.ui.components.parseLrc
+import kotlinx.coroutines.CoroutineScope
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
+import java.net.HttpURLConnection
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +28,8 @@ import com.metrolist.desktop.utils.HistoryEntry
 import com.metrolist.desktop.utils.HistoryRepository
 import com.metrolist.desktop.utils.HistoryStat
 import com.metrolist.desktop.utils.ScrobbleManager
+import com.metrolist.desktop.utils.DownloadManager
+import com.metrolist.desktop.utils.DownloadedFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -232,13 +242,26 @@ val CountryCodeToName = mapOf(
 object AppState {
     val client get() = GlobalInnerTube.client
     val prefs: Preferences = Preferences.userNodeForPackage(AppState::class.java)
-    private val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + kotlinx.coroutines.Job())
+private var libraryViewTypeInternal by mutableStateOf(
+ try {
+ prefs.get("LIBRARY_VIEW_TYPE", null)?.let { LibraryViewType.valueOf(it) }
+ } catch (_: Exception) { null }
+ ?: LibraryViewType.LIST
+ )
+ 
+ val libraryViewType: LibraryViewType
+ get() = libraryViewTypeInternal
+ 
+ fun setLibraryViewType(type: LibraryViewType) {
+ libraryViewTypeInternal = type
+ prefs.put("LIBRARY_VIEW_TYPE", type.name)
+ try { prefs.flush() } catch (_: Exception) {}
+ }
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
 
-    // SoundCloud artist image fetching
+    // SoundCloud artist image fetching with enhanced fallback strategy
     private suspend fun fetchSoundCloudArtistImage(artistName: String): String? = withContext(Dispatchers.IO) {
         return@withContext try {
-            println("[DEBUG] fetchSoundCloudArtistImage: Starting fetch for artist '$artistName'")
-
             // Clean the artist name
             val cleanArtistName = artistName.trim()
                 .replace("?", "")
@@ -249,31 +272,51 @@ object AppState {
                 return@withContext null
             }
 
-            // Search SoundCloud user/artist
+            // Try DuckDuckGo search first (more reliable for music artists)
+            val duckDuckGoResult = fetchDuckDuckGoIcon(cleanArtistName)
+            if (duckDuckGoResult != null) {
+                return@withContext duckDuckGoResult
+            }
+
+            // Try Bing image search as fallback
+            val bingResult = fetchBingIcon(cleanArtistName)
+            if (bingResult != null) {
+                return@withContext bingResult
+            }
+
+            // Try direct SoundCloud scraping as last resort (updated patterns)
             val encodedName = cleanArtistName.replace(" ", "%20")
             val searchUrl = "https://soundcloud.com/search/people?q=$encodedName"
 
             val response = client.get(searchUrl) {
-                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36")
+                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+                header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                header("Accept-Language", "en-US,en;q=0.5")
             }
 
             if (response.status.value == 200) {
                 val html = response.bodyAsText()
 
-                // Look for SoundCloud avatar images in the HTML
-                val avatarRegex = Regex("""https://i1\.sndcdn\.com/avatars-[^"]*?-(?:large|t500x500)\.jpg""")
-                val match = avatarRegex.find(html)
+                // Updated regex patterns for current SoundCloud structure
+                val patterns = listOf(
+                    // Modern SoundCloud avatar patterns
+                    Regex("""https://i1\.sndcdn\.com/avatars-[^"]*-t500x500\.[jpg|jpeg|png]"""),
+                    Regex("""https://i1\.sndcdn\.com/avatars-[^"]*-large\.[jpg|jpeg|png]"""),
+                    Regex("""https://i1\.sndcdn\.com/avatars-[^"]*?-(?:large|t500x500)\.jpg"""),
+                    // Fallback patterns
+                    Regex("""https://i1\.sndcdn\.com/[^"]*avatar[^"]*\.(jpg|jpeg|png)""")
+                )
 
-                if (match != null) {
-                    val imageUrl = match.value
-                    println("[DEBUG] fetchSoundCloudArtistImage: Found SoundCloud image: $imageUrl")
-                    return@withContext imageUrl
+                for (pattern in patterns) {
+                    val match = pattern.find(html)
+                    if (match != null) {
+                        return@withContext match.value
+                    }
                 }
             }
 
             null
         } catch (e: Exception) {
-            println("[ERROR] fetchSoundCloudArtistImage: Exception for '$artistName': ${e.message}")
             null
         }
     }
@@ -283,13 +326,10 @@ object AppState {
 
     fun setCustomArtistBanner(artistId: String, imageUrl: String) {
         customBanners[artistId] = imageUrl
-        // Save to preferences
         prefs.put("CUSTOM_BANNER_$artistId", imageUrl)
         try { prefs.flush() } catch (_: Exception) {}
 
-        // Update banner cache
         artistBannerCache[artistId] = imageUrl
-        println("[DEBUG] Set custom banner for artist $artistId: $imageUrl")
     }
 
     fun removeCustomArtistBanner(artistId: String) {
@@ -297,9 +337,7 @@ object AppState {
         prefs.remove("CUSTOM_BANNER_$artistId")
         try { prefs.flush() } catch (_: Exception) {}
 
-        // Remove from cache
         artistBannerCache.remove(artistId)
-        println("[DEBUG] Removed custom banner for artist $artistId")
     }
 
     fun getCustomArtistBanner(artistId: String): String? {
@@ -309,6 +347,12 @@ object AppState {
     val player = MusicPlayer()
     val queue = MusicQueue()
     private val scrobbleManager = ScrobbleManager(scope)
+
+    // Download manager state
+    var downloadStates by mutableStateOf(DownloadManager.downloadStates.value)
+    var downloadProgress by mutableStateOf(DownloadManager.downloadProgress.value)
+    var downloadedFiles by mutableStateOf<List<DownloadedFile>>(emptyList())
+    var isDownloadManagerLoaded by mutableStateOf(false)
     
     var currentTrack: SongItem? by mutableStateOf(null)
     var isPlaying by mutableStateOf(false)
@@ -603,7 +647,7 @@ object AppState {
         // Periodic Discord RPC update for when nothing is playing (keep Paused state alive)
         scope.launch {
             while (true) {
-                kotlinx.coroutines.delay(30000)
+                delay(30000)
                 if (!isPlaying || currentTrack == null) updateDiscordRpc()
             }
         }
@@ -612,7 +656,7 @@ object AppState {
         scope.launch(Dispatchers.IO) {
             try {
                 val conn = URI("https://api.github.com/repos/LampDelivery/Metrolist-Desktop/releases/latest")
-                    .toURL().openConnection() as java.net.HttpURLConnection
+                    .toURL().openConnection() as HttpURLConnection
                 conn.setRequestProperty("User-Agent", "Metrolist-Desktop/${BuildConfig.APP_VERSION}")
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
                 conn.connectTimeout = 10_000
@@ -628,85 +672,76 @@ object AppState {
 
         // Load play history on startup
         refreshHistory()
+
+        // Collect DownloadManager states
+        scope.launch {
+            DownloadManager.downloadStates.collectLatest { states ->
+                downloadStates = states
+            }
+        }
+        scope.launch {
+            DownloadManager.downloadProgress.collectLatest { progress ->
+                downloadProgress = progress
+            }
+        }
+        scope.launch {
+            downloadedFiles = DownloadManager.getDownloadedFiles()
+            isDownloadManagerLoaded = true
+        }
     }
 
     private suspend fun fetchLastFmIcon(name: String): String? {
-        println("[DEBUG] fetchLastFmIcon: Starting fetch for artist '$name'")
         return try {
             // Use Last.fm API to get the highest quality artist image
             val artistInfo = LastFM.getArtistInfo(client, name)
-            println("[DEBUG] fetchLastFmIcon: Last.fm API response: ${artistInfo != null}")
 
             val images = artistInfo?.get("image")?.jsonArray
-            println("[DEBUG] fetchLastFmIcon: Images array size: ${images?.size}")
 
             // Last.fm returns images in multiple sizes, get the largest one
             val largeImage = images?.lastOrNull()?.jsonObject?.get("#text")?.jsonPrimitive?.contentOrNull
             if (largeImage?.isNotBlank() == true) {
-                println("[DEBUG] fetchLastFmIcon: Found large image: $largeImage")
                 return largeImage
-            } else {
-                println("[DEBUG] fetchLastFmIcon: No large image found")
             }
 
             // Fallback to any available image if large is missing
             images?.forEach { imageElement ->
                 val url = imageElement.jsonObject["#text"]?.jsonPrimitive?.contentOrNull
-                println("[DEBUG] fetchLastFmIcon: Checking image URL: $url")
                 if (url?.isNotBlank() == true && url != "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png") {
-                    println("[DEBUG] fetchLastFmIcon: Using fallback image: $url")
                     return url
                 }
             }
 
-            println("[DEBUG] fetchLastFmIcon: No valid images found")
             null
         } catch (e: Exception) {
-            println("[DEBUG] fetchLastFmIcon: Exception occurred for '$name': ${e.message}")
             e.printStackTrace()
             null
         }
     }
 
     private suspend fun fetchSpotifyIcon(name: String): String? {
-        println("[DEBUG] fetchSpotifyIcon: Starting fetch for artist '$name'")
         return try {
             // Skip direct Spotify API due to anti-bot measures, start with fallbacks
 
             // Fallback to Last.fm for high-quality artist images
-            println("[DEBUG] fetchSpotifyIcon: Trying Last.fm for '$name'")
             val lastfmIcon = fetchLastFmIcon(name)
             if (lastfmIcon != null) {
-                println("[DEBUG] fetchSpotifyIcon: Last.fm returned: $lastfmIcon")
                 return lastfmIcon
-            } else {
-                println("[DEBUG] fetchSpotifyIcon: Last.fm returned null")
             }
 
             // Fallback to DuckDuckGo image search (music-focused)
-            println("[DEBUG] fetchSpotifyIcon: Trying DuckDuckGo for '$name'")
             val duckDuckGoIcon = fetchDuckDuckGoIcon(name)
             if (duckDuckGoIcon != null) {
-                println("[DEBUG] fetchSpotifyIcon: DuckDuckGo returned: $duckDuckGoIcon")
                 return duckDuckGoIcon
-            } else {
-                println("[DEBUG] fetchSpotifyIcon: DuckDuckGo returned null")
             }
 
             // Final fallback to YouTube Music search (only if Spotify is not the selected source)
-            println("[DEBUG] fetchSpotifyIcon: Trying YouTube Music for '$name' as final fallback")
             val ytMusicIcon = GlobalYouTubeRepository.instance.fetchArtistIcon(name)
             if (ytMusicIcon != null) {
-                println("[DEBUG] fetchSpotifyIcon: YouTube Music returned: $ytMusicIcon")
                 return ytMusicIcon
-            } else {
-                println("[DEBUG] fetchSpotifyIcon: YouTube Music returned null")
             }
 
-            println("[DEBUG] fetchSpotifyIcon: All sources failed for '$name'")
             null
         } catch (e: Exception) {
-            println("[DEBUG] fetchSpotifyIcon: Exception occurred for '$name': ${e.message}")
             e.printStackTrace()
             null
         }
@@ -985,6 +1020,17 @@ object AppState {
     var homeSectionOrder by mutableStateOf(
         prefs.get("HOME_SECTION_ORDER", "").split(",").filter { it.isNotEmpty() }.map { it.toIntOrNull() ?: 0 }
     )
+
+    // Dynamic section visibility - stores visibility by section title
+    private val sectionVisibilityPrefs: Map<String, Boolean> = prefs.get("HOME_SECTION_VISIBILITY", "")
+        .split(",")
+        .filter { it.contains(":") }
+        .associate<String, String, Boolean> { entry ->
+            val parts = entry.split(":", limit = 2)
+            parts[0] to (parts.getOrNull(1) == "true")
+        }
+
+    var homeSectionVisibility by mutableStateOf<MutableMap<String, Boolean>>(sectionVisibilityPrefs.toMutableMap())
     var showMixedForYou by mutableStateOf(prefs.getBoolean("SHOW_MIXED_FOR_YOU", true))
     var showListenAgain by mutableStateOf(prefs.getBoolean("SHOW_LISTEN_AGAIN", true))
     var showRecentlyPlayed by mutableStateOf(prefs.getBoolean("SHOW_RECENTLY_PLAYED", true))
@@ -994,6 +1040,23 @@ object AppState {
     var showMadeForYou by mutableStateOf(prefs.getBoolean("SHOW_MADE_FOR_YOU", true))
     var showSimilarTo by mutableStateOf(prefs.getBoolean("SHOW_SIMILAR_TO", true))
     var showTrendingMusic by mutableStateOf(prefs.getBoolean("SHOW_TRENDING_MUSIC", true))
+
+    // Function to check if a home section should be shown based on its title
+    fun shouldShowHomeSection(section: HomeSection): Boolean {
+        // Use dynamic visibility settings, default to true for new sections
+        return homeSectionVisibility.getOrDefault(section.title, true)
+    }
+
+    // Function to toggle section visibility dynamically
+    fun toggleHomeSectionVisibility(sectionTitle: String, visible: Boolean) {
+        homeSectionVisibility = homeSectionVisibility.toMutableMap().apply {
+            this[sectionTitle] = visible
+        }
+        // Save to preferences
+        val serialized = homeSectionVisibility.map { "${it.key}:${it.value}" }.joinToString(",")
+        prefs.put("HOME_SECTION_VISIBILITY", serialized)
+        try { prefs.flush() } catch (_: Exception) {}
+    }
 
     // Content and language settings
     var contentLanguage by mutableStateOf(prefs.get("CONTENT_LANGUAGE", "SYSTEM_DEFAULT"))
@@ -1071,10 +1134,17 @@ object AppState {
                 queue.setQueue(listOf(track), 0)
             }
 
-            val url = GlobalYouTubeRepository.instance.getStreamUrl(track.id)
-            if (url != null) {
-                player.play(track, url)
-            }
+            // Check for downloaded local file first, otherwise stream
+        val localPath = DownloadManager.getLocalAudioPath(track.id)
+        val url = if (localPath != null) {
+            localPath // Use local file if downloaded
+        } else {
+            GlobalYouTubeRepository.instance.getStreamUrl(track.id) // Otherwise stream from internet
+        }
+
+        if (url != null) {
+            player.play(track, url)
+        }
         }
     }
 
@@ -1296,8 +1366,8 @@ object AppState {
 
     fun copyToClipboard(text: String) {
         try {
-            val sel = java.awt.datatransfer.StringSelection(text)
-            java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(sel, sel)
+            val sel = StringSelection(text)
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(sel, sel)
         } catch (_: Exception) {}
     }
 
@@ -1491,7 +1561,7 @@ object AppState {
         try { prefs.flush() } catch (_: Exception) {}
         if (!dynamicTheme) {
             // Update seed color when not using dynamic theme
-            seedColor = androidx.compose.ui.graphics.Color(color)
+            seedColor = Color(color)
         }
     }
 
@@ -1504,7 +1574,7 @@ object AppState {
         prefs.putLong("SELECTED_THEME_COLOR", color)
         try { prefs.flush() } catch (_: Exception) {}
         if (!dynamicTheme) {
-            seedColor = androidx.compose.ui.graphics.Color(color.toULong())
+            seedColor = Color(color.toULong())
         }
     }
 
@@ -2113,7 +2183,6 @@ object AppState {
         selectedArtistId?.let { artistId ->
             saveLastFmPhotoUrl(artistId, url)
         }
-        // Update banner cache if using Last.fm as banner source
         if (artistBannerSource == ArtistSource.LASTFM) {
             selectedArtistId?.let { artistId ->
                 artistBannerCache[artistId] = url
@@ -2274,8 +2343,8 @@ object AppState {
         scope.launch {
             try {
                 val orderedEnabled = lyricsProviderOrder.filter { it in lyricsEnabledProviders }
-                var bestResult: com.metrolist.shared.api.LyricsWithProvider? = null
-                var fallbackResult: com.metrolist.shared.api.LyricsWithProvider? = null
+                var bestResult: LyricsWithProvider? = null
+                var fallbackResult: LyricsWithProvider? = null
 
                 for (provider in orderedEnabled) {
                     val candidate = GlobalYouTubeRepository.instance.getLyrics(
@@ -2287,7 +2356,7 @@ object AppState {
                         provider = provider
                     )
                     if (candidate.lyrics != null) {
-                        val parsed = com.metrolist.desktop.ui.components.parseLrc(candidate.lyrics!!)
+                        val parsed = parseLrc(candidate.lyrics!!)
                         val hasWordSync = parsed.any { it.words != null }
 
                         if (hasWordSync) {
@@ -2346,7 +2415,7 @@ object AppState {
                     }
                 }
             } catch (e: Exception) {
-                println("Failed to fetch artist icon on demand: ${e.message}")
+                // Failed to fetch artist icon on demand - silently continue
             }
         }
     }
@@ -2362,7 +2431,6 @@ object AppState {
                 else -> null
             }
         } catch (e: Exception) {
-            println("Failed to fetch artist banner on demand: ${e.message}")
             null
         }
     }
@@ -2379,7 +2447,7 @@ object AppState {
                     }
                 }
             } catch (e: Exception) {
-                println("Failed to play album: ${e.message}")
+                // Failed to play album - silently continue
             }
         }
     }

@@ -39,7 +39,7 @@ fun EmbeddedSignInView(
                 val webView = WebView()
                 val engine: WebEngine = webView.engine
                 
-                // annoying crap (thanks google)
+                // Use iPad user agent to avoid Google sign-in restrictions on desktop browsers
                 engine.userAgent = "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.89 Mobile/15E148 Safari/604.1"
                 
                 engine.load("https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com")

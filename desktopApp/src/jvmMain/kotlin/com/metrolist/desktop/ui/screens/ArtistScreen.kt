@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.outlined.AddAlert
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Radio
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults

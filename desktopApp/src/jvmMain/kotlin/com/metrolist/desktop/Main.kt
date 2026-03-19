@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
@@ -49,20 +47,19 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.window.*
-import androidx.compose.ui.zIndex
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import javafx.application.Platform
-import kotlinx.coroutines.launch
 import com.metrolist.shared.model.*
 import com.metrolist.shared.api.lastfm.LastFM
 import com.metrolist.desktop.state.AppState
-import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.desktop.state.NavItem
 import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
 import com.metrolist.desktop.ui.components.*
 import com.metrolist.desktop.ui.screens.*
+import com.metrolist.desktop.utils.ModernTrayManager
+import com.metrolist.desktop.utils.WindowsMediaTransportControls
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.awt.GraphicsEnvironment
@@ -115,12 +112,20 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
             label = "topBarAlpha"
         )
 
+        // Use Surface with proper background color and ensure perfect clipping
         Surface(
             modifier = Modifier.fillMaxSize()
-                .clip(RoundedCornerShape(windowCornerRadius))
-                .border(if (AppState.isMaximized) 0.dp else 1.dp, outlineColor, RoundedCornerShape(windowCornerRadius)),
-            color = colorScheme.background
+                .clip(RoundedCornerShape(windowCornerRadius)), // Clip the entire surface first
+            color = colorScheme.background // Use proper background color for theme context
         ) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .border(
+                        if (AppState.isMaximized) 0.dp else 1.dp,
+                        outlineColor,
+                        RoundedCornerShape(windowCornerRadius)
+                    )
+            ) {
             Column(Modifier.fillMaxSize()) {
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -570,6 +575,7 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                 AddToPlaylistDialog()
             }
         }
+        }
     }
 }
 
@@ -997,6 +1003,25 @@ fun main() {
                 }
                 window.addWindowListener(listener)
                 onDispose { window.removeWindowListener(listener) }
+            }
+
+            // Initialize modern tray menu
+            LaunchedEffect(window) {
+                ModernTrayManager.initTray()
+                WindowsMediaTransportControls.initialize(window)
+            }
+
+            // Update tray icon when playback state changes
+            LaunchedEffect(AppState.isPlaying, AppState.currentTrack) {
+                ModernTrayManager.updateTrayColor(AppState.seedColor.toAwtColor())
+                WindowsMediaTransportControls.updateMediaState()
+            }
+
+            DisposableEffect(Unit) {
+                onDispose {
+                    // ModernTrayManager cleanup logic if needed
+                    WindowsMediaTransportControls.cleanup()
+                }
             }
 
             // On Linux: use window.shape to clip rounded corners instead of transparency.

@@ -67,6 +67,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 }
 
 // Generate a Config file similar to Android's BuildConfig

@@ -135,29 +135,68 @@ class MpvPlayer {
     }
 
     fun play(url: String) {
-        val lib = MpvLib.load() ?: return
-        val h = handle ?: return
-        lib.mpv_command(h, arrayOf("loadfile", url, "replace"))
+        println("[MpvPlayer] play() called with url: $url")
+        val lib = MpvLib.load()
+        if (lib == null) {
+            println("[MpvPlayer] ERROR: MpvLib not loaded")
+            return
+        }
+        val h = handle
+        if (h == null) {
+            println("[MpvPlayer] ERROR: handle is null")
+            return
+        }
+        val result = lib.mpv_command(h, arrayOf("loadfile", url, "replace"))
+        if (result != 0) {
+            println("[MpvPlayer] ERROR: mpv_command failed with code $result")
+        }
         _isPlaying.value = true
     }
 
     fun pause() {
-        val h = handle ?: return
-        val lib = MpvLib.load() ?: return
+        println("[MpvPlayer] pause() called")
+        val h = handle
+        if (h == null) {
+            println("[MpvPlayer] ERROR: handle is null")
+            return
+        }
+        val lib = MpvLib.load()
+        if (lib == null) {
+            println("[MpvPlayer] ERROR: MpvLib not loaded")
+            return
+        }
         lib.mpv_command(h, arrayOf("set", "pause", "yes"))
         _isPlaying.value = false
     }
 
     fun resume() {
-        val h = handle ?: return
-        val lib = MpvLib.load() ?: return
+        println("[MpvPlayer] resume() called")
+        val h = handle
+        if (h == null) {
+            println("[MpvPlayer] ERROR: handle is null")
+            return
+        }
+        val lib = MpvLib.load()
+        if (lib == null) {
+            println("[MpvPlayer] ERROR: MpvLib not loaded")
+            return
+        }
         lib.mpv_command(h, arrayOf("set", "pause", "no"))
         _isPlaying.value = true
     }
 
     fun stop() {
-        val h = handle ?: return
-        val lib = MpvLib.load() ?: return
+        println("[MpvPlayer] stop() called")
+        val h = handle
+        if (h == null) {
+            println("[MpvPlayer] ERROR: handle is null")
+            return
+        }
+        val lib = MpvLib.load()
+        if (lib == null) {
+            println("[MpvPlayer] ERROR: MpvLib not loaded")
+            return
+        }
         lib.mpv_command(h, arrayOf("stop"))
         _isPlaying.value = false
     }
