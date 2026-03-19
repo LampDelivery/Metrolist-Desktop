@@ -1448,6 +1448,7 @@ private var libraryViewTypeInternal by mutableStateOf(
     
     fun updateSliderStyle(style: SliderStyle) {
         sliderStyle = style
+        sliderStyleState = style
         prefs.put("SLIDER_STYLE", style.name)
         try { prefs.flush() } catch (_: Exception) {}
     }
