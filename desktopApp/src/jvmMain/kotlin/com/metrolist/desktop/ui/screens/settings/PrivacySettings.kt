@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
@@ -87,7 +89,7 @@ fun PrivacySettingsScreen(colorScheme: ColorScheme) {
             SettingsToggleWithIcon(
                 title = "Pause listen history",
                 subtitle = "Stops recording played songs to your local history",
-                icon = Icons.Outlined.HideImage,
+                icon = Icons.Outlined.Description,
                 checked = AppState.pauseListenHistory,
                 onCheckedChange = { AppState.togglePauseListenHistory(it) },
                 colorScheme = colorScheme
@@ -103,7 +105,7 @@ fun PrivacySettingsScreen(colorScheme: ColorScheme) {
             SettingsToggleWithIcon(
                 title = "Pause search history",
                 subtitle = "Stops saving your search queries",
-                icon = Icons.Outlined.HideImage,
+                icon = Icons.Outlined.Visibility,
                 checked = AppState.pauseSearchHistory,
                 onCheckedChange = { AppState.togglePauseSearchHistory(it) },
                 colorScheme = colorScheme
