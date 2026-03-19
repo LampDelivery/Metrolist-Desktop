@@ -84,9 +84,10 @@ fun PrivacySettingsScreen(colorScheme: ColorScheme) {
         }
 
         SettingsGroup(title = "History & Data", colorScheme = colorScheme) {
-            SettingsToggle(
+            SettingsToggleWithIcon(
                 title = "Pause listen history",
                 subtitle = "Stops recording played songs to your local history",
+                icon = Icons.Outlined.FormatListNumbered,
                 checked = AppState.pauseListenHistory,
                 onCheckedChange = { AppState.togglePauseListenHistory(it) },
                 colorScheme = colorScheme
@@ -99,9 +100,10 @@ fun PrivacySettingsScreen(colorScheme: ColorScheme) {
                 onClick = { showClearListenConfirm = true }
             )
 
-            SettingsToggle(
+            SettingsToggleWithIcon(
                 title = "Pause search history",
                 subtitle = "Stops saving your search queries",
+                icon = Icons.Outlined.Sync,
                 checked = AppState.pauseSearchHistory,
                 onCheckedChange = { AppState.togglePauseSearchHistory(it) },
                 colorScheme = colorScheme

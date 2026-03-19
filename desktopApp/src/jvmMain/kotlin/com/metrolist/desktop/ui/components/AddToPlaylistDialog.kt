@@ -22,6 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,8 +36,17 @@ import com.metrolist.desktop.state.AppState
 fun AddToPlaylistDialog() {
     val song = AppState.showAddToPlaylistSong ?: return
 
+    // Always fetch playlists when dialog opens
+    LaunchedEffect(AppState.showAddToPlaylistSong) {
+        if (AppState.showAddToPlaylistSong != null) {
+            AppState.fetchUserPlaylists()
+        }
+    }
+
+    var addResult by remember { mutableStateOf<String?>(null) }
+
     AlertDialog(
-        onDismissRequest = { AppState.showAddToPlaylistSong = null },
+        onDismissRequest = { AppState.showAddToPlaylistSong = null; addResult = null },
         title = { Text("Add to Playlist") },
         text = {
             when {
@@ -62,6 +76,11 @@ fun AddToPlaylistDialog() {
                         CircularProgressIndicator()
                     }
                 }
+                addResult != null -> {
+                    Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                        Text(addResult!!, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(AppState.userPlaylists) { playlist ->
@@ -78,7 +97,8 @@ fun AddToPlaylistDialog() {
                                 },
                                 modifier = Modifier.clickable {
                                     AppState.addToPlaylist(playlist.id, song)
-                                    AppState.showAddToPlaylistSong = null
+                                    addResult = "Added to \"${playlist.title}\"!"
+                                    // Optionally update playlist state here
                                 }
                             )
                         }
@@ -88,7 +108,7 @@ fun AddToPlaylistDialog() {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = { AppState.showAddToPlaylistSong = null }) {
+            TextButton(onClick = { AppState.showAddToPlaylistSong = null; addResult = null }) {
                 Text("Cancel")
             }
         }

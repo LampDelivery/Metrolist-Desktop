@@ -132,17 +132,19 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup(title = "Content Filtering", colorScheme = colorScheme) {
-            SettingsToggle(
+            SettingsToggleWithIcon(
                 title = "Hide explicit content",
                 subtitle = "Filters songs marked as explicit from search and recommendations",
+                icon = Icons.Outlined.Visibility,
                 checked = AppState.hideExplicit,
                 onCheckedChange = { AppState.toggleHideExplicit(it) },
                 colorScheme = colorScheme
             )
 
-            SettingsToggle(
+            SettingsToggleWithIcon(
                 title = "Hide video songs",
                 subtitle = "Hides songs that are music videos rather than audio tracks",
+                icon = Icons.Outlined.Image,
                 checked = AppState.hideVideoSongs,
                 onCheckedChange = { AppState.toggleHideVideoSongs(it) },
                 colorScheme = colorScheme

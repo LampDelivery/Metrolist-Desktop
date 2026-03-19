@@ -50,6 +50,7 @@ fun SettingsScreen(colorScheme: ColorScheme) {
         AppState.showAiSettings -> AiSettingsScreen(colorScheme)
         AppState.showPrivacySettings -> PrivacySettingsScreen(colorScheme)
         AppState.showStorageSettings -> StorageSettingsScreen(colorScheme)
+        AppState.showAboutSettings -> com.metrolist.desktop.ui.screens.settings.AboutScreen()
         else -> {
             // Main settings screen
             val scrollState = rememberScrollState()
