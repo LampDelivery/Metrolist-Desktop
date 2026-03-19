@@ -2,7 +2,7 @@
 """
 Generate installer icon files (logo.png, logo.ico, logo.icns) from the
 raw white-on-transparent logo, composited onto a coloured circle background
-that matches the app's default dynamic icon (DefaultThemeColor = #ED5564).
+that matches the app's default dynamic icon (DefaultThemeColor = #000000).
 
 Usage:
   python3 scripts/gen_icons.py
@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).parent.parent
 RESOURCES = REPO_ROOT / "desktopApp" / "src" / "jvmMain" / "resources"
 
 # Matches DefaultThemeColor = Color(0xFFED5564) in Constants.kt
-ICON_COLOR = (0xED, 0x55, 0x64, 255)
+ICON_COLOR = (0x00, 0x00, 0x00, 255)
 
 # Sizes embedded in the .ico file
 ICO_SIZES = [16, 32, 48, 64, 128, 256]
