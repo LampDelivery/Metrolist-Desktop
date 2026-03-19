@@ -3,12 +3,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name="com.metrolist.music.App"
         android:allowBackup="true"
         android:label="Metrolist"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name=".MainActivity"
+            android:name="com.metrolist.android.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
