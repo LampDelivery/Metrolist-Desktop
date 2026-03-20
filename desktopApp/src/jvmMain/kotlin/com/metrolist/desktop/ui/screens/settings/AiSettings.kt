@@ -27,22 +27,14 @@ fun AiSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showAiSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "AI & Translation",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "AI & Translation",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "AI Translation", colorScheme = colorScheme) {
+        SettingsGroup(title = "AI Translation", colorScheme = colorScheme, searchKeywords = listOf("ai", "translation", "lyrics", "model", "api")) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "AI-powered lyrics translation",

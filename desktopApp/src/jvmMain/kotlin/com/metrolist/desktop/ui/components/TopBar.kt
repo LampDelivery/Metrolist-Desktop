@@ -32,9 +32,11 @@ import androidx.compose.material.icons.automirrored.outlined.NavigateNext
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CropSquare
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterNone
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HorizontalRule
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Cached
@@ -101,7 +103,11 @@ fun WindowScope.CustomTitleBar(
     onSearchFocusChange: (Boolean) -> Unit,
     onClose: () -> Unit,
     onMinimize: () -> Unit,
-    onMaximize: () -> Unit
+    onMaximize: () -> Unit,
+    isSidebarExpanded: Boolean = true,
+    onToggleSidebar: () -> Unit = {},
+    isEditingSidebar: Boolean = false,
+    onToggleEdit: () -> Unit = {}
 ) {
     var isSearchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -120,30 +126,45 @@ fun WindowScope.CustomTitleBar(
                 .then(if (frosted) Modifier.blur(32.dp) else Modifier)
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), 
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp), 
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left side: Title
-                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.primary,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .clickable { 
-                                AppState.showSettings = false 
-                                AppState.showSignIn = false
-                                AppState.showIntegrations = false
-                                AppState.isExpanded = false
-                            },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // Left side: Menu button + Edit button (only when sidebar expanded)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Toggle sidebar menu button
+                    IconButton(
+                        onClick = onToggleSidebar,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Menu,
+                            contentDescription = "Toggle Sidebar",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Edit sidebar button (only show when expanded)
+                    if (isSidebarExpanded) {
+                        IconButton(
+                            onClick = onToggleEdit,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                if (isEditingSidebar) Icons.Default.Check else Icons.Default.Edit,
+                                contentDescription = if (isEditingSidebar) "Done editing" else "Edit sidebar",
+                                tint = if (isEditingSidebar) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
                 
-                // Middle side: Search Bar (more centered now)
+                // Middle: Search Bar
                 Box(Modifier.weight(2f), contentAlignment = Alignment.Center) {
                     Box {
                         BasicTextField(
@@ -344,7 +365,7 @@ private fun AccountMenuPanel(
         alignment = Alignment.BottomEnd,
         offset = IntOffset(0, 4),
         onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+        properties = androidx.compose.ui.window.PopupProperties(focusable = false)
     ) {
         Card(
             modifier = Modifier

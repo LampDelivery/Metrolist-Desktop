@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -58,6 +61,7 @@ import com.metrolist.desktop.constants.*
 import com.metrolist.desktop.ui.theme.*
 import com.metrolist.desktop.ui.components.*
 import com.metrolist.desktop.ui.screens.*
+import com.metrolist.desktop.ui.screens.settings.*
 import com.metrolist.desktop.ui.layouts.AppLayoutManager
 import com.metrolist.desktop.utils.TrayManager
 import com.metrolist.desktop.utils.WindowsMediaTransportControls
@@ -107,7 +111,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
 
         val pageKey = when {
             AppState.showSignIn -> "signIn"
-            AppState.showSettings -> "settings"
             AppState.showIntegrations -> "integrations"
             AppState.selectedLocalPlaylist != null -> "localPlaylist"
             AppState.selectedArtistId != null -> "artist"
@@ -138,6 +141,29 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                     )
             ) {
             Column(Modifier.fillMaxSize()) {
+                // Top bar - full width, at the top
+                CustomTitleBar(
+                    title = currentTitle,
+                    colorScheme = colorScheme,
+                    backgroundAlpha = topBarAlpha,
+                    searchText = searchText,
+                    onSearchChange = { searchText = it },
+                    onSearchFocusChange = { isSearchFocused = it },
+                    onClose = onClose,
+                    onMinimize = onMinimize,
+                    onMaximize = onMaximize,
+                    isSidebarExpanded = isSidebarExpanded,
+                    onToggleSidebar = {
+                        isSidebarExpanded = !isSidebarExpanded
+                        if (!isSidebarExpanded) AppState.isEditingSidebar = false
+                        focusManager.clearFocus()
+                    },
+                    isEditingSidebar = AppState.isEditingSidebar,
+                    onToggleEdit = {
+                        AppState.isEditingSidebar = !AppState.isEditingSidebar
+                        focusManager.clearFocus()
+                    }
+                )
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val expansionProgress by animateFloatAsState(
@@ -152,48 +178,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                         color = colorScheme.surfaceContainer
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().height(TopBarHeight),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.width(SideRailCollapsedWidth), contentAlignment = Alignment.Center) {
-                                    IconButton(onClick = { 
-                                        isSidebarExpanded = !isSidebarExpanded 
-                                        if (!isSidebarExpanded) AppState.isEditingSidebar = false
-                                        focusManager.clearFocus()
-                                    }) {
-                                        Icon(Icons.Default.Menu, contentDescription = "Toggle Sidebar", tint = colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                                
-                                Text(
-                                    "Metrolist",
-                                    modifier = Modifier.padding(start = 4.dp).alpha(expansionProgress),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorScheme.onSurface,
-                                    maxLines = 1
-                                )
-
-                                if (isSidebarExpanded) {
-                                    Spacer(Modifier.weight(1f))
-                                    IconButton(
-                                        onClick = { 
-                                            AppState.isEditingSidebar = !AppState.isEditingSidebar 
-                                            focusManager.clearFocus()
-                                        },
-                                        modifier = Modifier.padding(end = 8.dp).alpha(expansionProgress)
-                                    ) {
-                                        Icon(
-                                            if (AppState.isEditingSidebar) Icons.Default.Check else Icons.Default.Edit, 
-                                            null, 
-                                            tint = if (AppState.isEditingSidebar) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-
                             // Sidebar Navigation Items
                             val iconMap = mapOf(
                                 "home" to (Icons.Outlined.Home to Icons.Default.Home),
@@ -477,11 +461,8 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                             AppState.topBarScrollOffset = if (pageKey in setOf("home", "artist")) 0 else Int.MAX_VALUE
                         }
 
-                        // Screens that don't use a full-bleed header get 48dp top inset
-                        val useTopPadding = pageKey !in setOf("home", "artist")
-                        Box(modifier = Modifier.fillMaxSize()
-                            .then(if (useTopPadding) Modifier.padding(top = 48.dp) else Modifier)
-                        ) {
+                        // Top bar is now structural, no need for top padding
+                        Box(modifier = Modifier.fillMaxSize()) {
                             com.metrolist.desktop.ui.components.PageTransition(
                                 pageKey = pageKey
                             ) { key ->
@@ -490,7 +471,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                         onAuthDataExtracted = { cookie, visitorData, dataSyncId -> AppState.updateAuth(cookie, visitorData, dataSyncId) },
                                         modifier = Modifier.fillMaxSize()
                                     )
-                                    "settings" -> SettingsScreen(colorScheme)
                                     "integrations" -> IntegrationsScreen(colorScheme)
                                     "artist" -> {
                                         val artistId = AppState.selectedArtistId
@@ -559,19 +539,6 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                                 ExpandedPlayerView()
                             }
                         }
-
-                        // Always rendered last = always on top of everything including expanded player
-                        CustomTitleBar(
-                            title = currentTitle,
-                            colorScheme = colorScheme,
-                            backgroundAlpha = topBarAlpha,
-                            searchText = searchText,
-                            onSearchChange = { searchText = it },
-                            onSearchFocusChange = { isSearchFocused = it },
-                            onClose = onClose,
-                            onMinimize = onMinimize,
-                            onMaximize = onMaximize
-                        )
                     }
                 }
                 
@@ -584,8 +551,380 @@ fun WindowScope.App(onClose: () -> Unit, onMinimize: () -> Unit, onMaximize: () 
                 }
 
                 AddToPlaylistDialog()
+                
+                // Settings overlay - floating window
+                if (AppState.showSettings) {
+                    SettingsOverlay(colorScheme)
+                }
             }
         }
+        }
+    }
+}
+
+// Settings categories for sidebar navigation
+private enum class SettingsSection(
+    val title: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val screen: @Composable (ColorScheme) -> Unit
+) {
+    APPEARANCE("Appearance", "Theme, colors, and visual preferences", Icons.Outlined.Palette, { cs -> AppearanceSettingsScreen(cs) }),
+    PLAYER("Player & Audio", "Playback settings and audio preferences", Icons.Outlined.PlayArrow, { cs -> PlayerSettingsScreen(cs) }),
+    CONTENT("Content & Filters", "Content filtering and display options", Icons.Outlined.Language, { cs -> ContentSettingsScreen(cs) }),
+    AI("AI & Translation", "AI-powered lyrics translation settings", Icons.Outlined.Translate, { cs -> AiSettingsScreen(cs) }),
+    PRIVACY("Privacy", "History and data privacy controls", Icons.Outlined.Security, { cs -> PrivacySettingsScreen(cs) }),
+    STORAGE("Storage", "Cache management and storage settings", Icons.Outlined.Storage, { cs -> StorageSettingsScreen(cs) }),
+    ABOUT("About", "App information and updates", Icons.Outlined.Info, { _ -> AboutScreen() })
+}
+
+@Composable
+fun SettingsOverlay(colorScheme: ColorScheme) {
+    var selectedSection by remember { mutableStateOf(SettingsSection.APPEARANCE) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    // Provide search query to child composables
+    CompositionLocalProvider(LocalSettingsSearchQuery provides searchQuery) {
+    
+    Dialog(
+        onDismissRequest = { AppState.showSettings = false },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .width(1080.dp)
+                .height(720.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Sidebar
+                Column(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .fillMaxHeight()
+                        .background(colorScheme.surfaceContainerLowest)
+                        .padding(16.dp)
+                ) {
+                    // Header (no close button here anymore)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Settings",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+                    
+                    // Search bar
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = "Search",
+                                tint = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        "Search settings...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                androidx.compose.foundation.text.BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.onSurface),
+                                    modifier = Modifier.fillMaxSize(),
+                                    singleLine = true,
+                                    cursorBrush = SolidColor(colorScheme.primary),
+                                    decorationBox = { innerTextField ->
+                                        innerTextField()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(16.dp))
+                    
+                    // Navigation items (search is applied to subpage content, not categories)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(SettingsSection.entries, key = { it.ordinal }) { section ->
+                            val isSelected = selectedSection == section
+                            
+                            // Animated container for selection change
+                            val animatedContainerColor by animateColorAsState(
+                                targetValue = if (isSelected) colorScheme.secondaryContainer else Color.Transparent,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                label = "containerColor"
+                            )
+                            val animatedIconColor by animateColorAsState(
+                                targetValue = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                label = "iconBgColor"
+                            )
+                            val animatedIconTint by animateColorAsState(
+                                targetValue = if (isSelected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                label = "iconTint"
+                            )
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(animatedContainerColor)
+                                    .clickable { 
+                                        selectedSection = section
+                                        searchQuery = "" // Clear search when switching tabs
+                                    }
+                                    .animateItem()
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Icon container - same style as SettingsToggleWithIcon
+                                Surface(
+                                    modifier = Modifier.size(40.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = animatedIconColor
+                                ) {
+                                    Icon(
+                                        section.icon,
+                                        contentDescription = section.title,
+                                        tint = animatedIconTint,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(8.dp)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        section.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Vertical divider
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(1.dp)
+                        .background(colorScheme.outlineVariant)
+                )
+                
+                // Content area with close button at top right
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    // Animated content transition when switching categories
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = selectedSection,
+                            transitionSpec = {
+                                val isForward = targetState.ordinal > initialState.ordinal
+                                (slideInVertically(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                    initialOffsetY = { if (isForward) it else -it }
+                                ) + fadeIn(
+                                    animationSpec = tween(300)
+                                )) togetherWith (slideOutVertically(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                    targetOffsetY = { if (isForward) -it else it }
+                                ) + fadeOut(
+                                    animationSpec = tween(200)
+                                ))
+                            },
+                            label = "settingsContent"
+                        ) { section ->
+                            section.screen(colorScheme)
+                        }
+                        
+                        // Search query chip at bottom when searching
+                        if (searchQuery.isNotEmpty()) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(16.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                color = colorScheme.primaryContainer
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        "Searching: \"$searchQuery\"",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colorScheme.onPrimaryContainer
+                                    )
+                                        IconButton(
+                                            onClick = { searchQuery = "" },
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Clear search",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Close button at top right corner of content area
+                    IconButton(
+                        onClick = { AppState.showSettings = false },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+    }
+}
+
+@Composable
+private fun MainSettingsScreen(colorScheme: ColorScheme) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(scrollState)
+    ) {
+        // Title
+        Text(
+            "Settings",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        // User Interface Section
+        SettingsGroup(title = "User Interface", colorScheme = colorScheme) {
+            SettingsNavigationWithIcon(
+                title = "Appearance",
+                subtitle = "Theme, colors, and visual preferences",
+                icon = Icons.Outlined.Palette,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Player & Content Section
+        SettingsGroup(title = "Player & Content", colorScheme = colorScheme) {
+            SettingsNavigationWithIcon(
+                title = "Player & Audio",
+                subtitle = "Playback settings and audio preferences",
+                icon = Icons.Outlined.PlayArrow,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+            SettingsNavigationWithIcon(
+                title = "Content & Filters",
+                subtitle = "Content filtering and display options",
+                icon = Icons.Outlined.Language,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+            SettingsNavigationWithIcon(
+                title = "AI & Translation",
+                subtitle = "AI-powered lyrics translation settings",
+                icon = Icons.Outlined.Translate,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Privacy & Security Section
+        SettingsGroup(title = "Privacy & Security", colorScheme = colorScheme) {
+            SettingsNavigationWithIcon(
+                title = "Privacy",
+                subtitle = "History and data privacy controls",
+                icon = Icons.Outlined.Security,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Storage & Data Section
+        SettingsGroup(title = "Storage & Data", colorScheme = colorScheme) {
+            SettingsNavigationWithIcon(
+                title = "Storage",
+                subtitle = "Cache management and storage settings",
+                icon = Icons.Outlined.Storage,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // System & About Section
+        SettingsGroup(title = "System & About", colorScheme = colorScheme) {
+            SettingsNavigationWithIcon(
+                title = "About",
+                subtitle = "App information and updates",
+                icon = Icons.Outlined.Info,
+                colorScheme = colorScheme,
+                onClick = { /* Handled by sidebar */ }
+            )
         }
     }
 }

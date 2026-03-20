@@ -81,22 +81,14 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showAppearanceSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Appearance",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Appearance",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "Display", colorScheme = colorScheme) {
+        SettingsGroup(title = "Display", colorScheme = colorScheme, searchKeywords = listOf("display", "refresh", "rate", "high", "theme", "dynamic", "black", "contrast")) {
             SettingsToggleWithIcon(
                 title = "Enable high refresh rate",
                 subtitle = "Higher refresh rates provide smoother visual experience",
@@ -140,15 +132,15 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
         Spacer(Modifier.height(16.dp))
 
         // --- Cider-inspired UI customizations ---
-        SettingsGroup(title = "Cider-Inspired UI", colorScheme = colorScheme) {
+        SettingsGroup(title = "Cider-Inspired UI", colorScheme = colorScheme, searchKeywords = listOf("layout", "drawer", "sidebar", "gradient", "persistent", "cider")) {
             // App layout selector
             SettingsNavigationWithIcon(
                 title = "App Layout",
                 subtitle = when (AppState.appLayout) {
-                    AppLayout.CANVAS -> "Canvas - Clean foundation"
-                    AppLayout.STUDIO -> "Studio - Expanded workspace"
-                    AppLayout.STAGE -> "Stage - Performance focused"
-                    AppLayout.FLOW -> "Flow - Streamlined experience"
+                    AppLayout.EXPRESS -> "Canvas - Clean foundation"
+                    AppLayout.COMFORTABLE -> "Studio - Expanded workspace"
+                    AppLayout.FOCUSED -> "Stage - Performance focused"
+                    AppLayout.DYNAMIC -> "Flow - Streamlined experience"
                 },
                 icon = Icons.Outlined.ViewCompact,
                 colorScheme = colorScheme,
@@ -168,7 +160,7 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
             )
         }
 
-        SettingsGroup(title = "Mini-player", colorScheme = colorScheme) {
+        SettingsGroup(title = "Mini-player", colorScheme = colorScheme, searchKeywords = listOf("mini", "player", "miniplayer")) {
             SettingsToggleWithIcon(
                 title = "New mini player design",
                 subtitle = "Enhanced mini-player with improved layout",
@@ -190,7 +182,7 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Player", colorScheme = colorScheme) {
+        SettingsGroup(title = "Player", colorScheme = colorScheme, searchKeywords = listOf("player", "panel", "card", "artist", "art")) {
             SettingsToggleWithIcon(
                 title = "New player design",
                 subtitle = "Enhanced player interface with modern styling",
@@ -292,23 +284,15 @@ fun ThemeSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showThemeSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Theme & Colors",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Theme & Colors",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
         // Theme preview mockup (like Android app)
-        SettingsGroup(title = "Preview", colorScheme = colorScheme) {
+        SettingsGroup(title = "Preview", colorScheme = colorScheme, searchKeywords = listOf("preview", "theme")) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -325,7 +309,7 @@ fun ThemeSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Theme Mode", colorScheme = colorScheme) {
+        SettingsGroup(title = "Theme Mode", colorScheme = colorScheme, searchKeywords = listOf("mode", "dark", "light", "auto", "theme")) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -356,7 +340,7 @@ fun ThemeSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Color Palette", colorScheme = colorScheme) {
+        SettingsGroup(title = "Color Palette", colorScheme = colorScheme, searchKeywords = listOf("color", "palette", "accent", "primary")) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "Choose your preferred color scheme",
@@ -798,19 +782,19 @@ fun AppLayoutPreview(
             elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
         ) {
             when (layout) {
-                AppLayout.CANVAS -> CanvasLayoutMockup(colorScheme)
-                AppLayout.STUDIO -> StudioLayoutMockup(colorScheme)
-                AppLayout.STAGE -> StageLayoutMockup(colorScheme)
-                AppLayout.FLOW -> FlowLayoutMockup(colorScheme)
+                AppLayout.EXPRESS -> CanvasLayoutMockup(colorScheme)
+                AppLayout.COMFORTABLE -> StudioLayoutMockup(colorScheme)
+                AppLayout.FOCUSED -> StageLayoutMockup(colorScheme)
+                AppLayout.DYNAMIC -> FlowLayoutMockup(colorScheme)
             }
         }
 
         Text(
             text = when (layout) {
-                AppLayout.CANVAS -> "Canvas"
-                AppLayout.STUDIO -> "Studio"
-                AppLayout.STAGE -> "Stage"
-                AppLayout.FLOW -> "Flow"
+                AppLayout.EXPRESS -> "Canvas"
+                AppLayout.COMFORTABLE -> "Studio"
+                AppLayout.FOCUSED -> "Stage"
+                AppLayout.DYNAMIC -> "Flow"
             },
             style = MaterialTheme.typography.labelMedium,
             color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,
@@ -819,10 +803,10 @@ fun AppLayoutPreview(
 
         Text(
             text = when (layout) {
-                AppLayout.CANVAS -> "Clean foundation"
-                AppLayout.STUDIO -> "Expanded workspace"
-                AppLayout.STAGE -> "Performance focused"
-                AppLayout.FLOW -> "Streamlined experience"
+                AppLayout.EXPRESS -> "Clean foundation"
+                AppLayout.COMFORTABLE -> "Expanded workspace"
+                AppLayout.FOCUSED -> "Performance focused"
+                AppLayout.DYNAMIC -> "Streamlined experience"
             },
             style = MaterialTheme.typography.labelSmall,
             color = colorScheme.onSurfaceVariant,
@@ -1330,18 +1314,18 @@ fun AppLayoutDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AppLayoutOption(
-                        layout = AppLayout.CANVAS,
-                        isSelected = AppState.appLayout == AppLayout.CANVAS,
+                        layout = AppLayout.EXPRESS,
+                        isSelected = AppState.appLayout == AppLayout.EXPRESS,
                         colorScheme = colorScheme,
                         modifier = Modifier.weight(1f),
-                        onClick = { onLayoutSelected(AppLayout.CANVAS) }
+                        onClick = { onLayoutSelected(AppLayout.EXPRESS) }
                     )
                     AppLayoutOption(
-                        layout = AppLayout.STUDIO,
-                        isSelected = AppState.appLayout == AppLayout.STUDIO,
+                        layout = AppLayout.COMFORTABLE,
+                        isSelected = AppState.appLayout == AppLayout.COMFORTABLE,
                         colorScheme = colorScheme,
                         modifier = Modifier.weight(1f),
-                        onClick = { onLayoutSelected(AppLayout.STUDIO) }
+                        onClick = { onLayoutSelected(AppLayout.COMFORTABLE) }
                     )
                 }
 
@@ -1350,18 +1334,18 @@ fun AppLayoutDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AppLayoutOption(
-                        layout = AppLayout.STAGE,
-                        isSelected = AppState.appLayout == AppLayout.STAGE,
+                        layout = AppLayout.FOCUSED,
+                        isSelected = AppState.appLayout == AppLayout.FOCUSED,
                         colorScheme = colorScheme,
                         modifier = Modifier.weight(1f),
-                        onClick = { onLayoutSelected(AppLayout.STAGE) }
+                        onClick = { onLayoutSelected(AppLayout.FOCUSED) }
                     )
                     AppLayoutOption(
-                        layout = AppLayout.FLOW,
-                        isSelected = AppState.appLayout == AppLayout.FLOW,
+                        layout = AppLayout.DYNAMIC,
+                        isSelected = AppState.appLayout == AppLayout.DYNAMIC,
                         colorScheme = colorScheme,
                         modifier = Modifier.weight(1f),
-                        onClick = { onLayoutSelected(AppLayout.FLOW) }
+                        onClick = { onLayoutSelected(AppLayout.DYNAMIC) }
                     )
                 }
             }
@@ -1400,19 +1384,19 @@ fun AppLayoutOption(
             elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
         ) {
             when (layout) {
-                AppLayout.CANVAS -> CanvasLayoutMockup(colorScheme)
-                AppLayout.STUDIO -> StudioLayoutMockup(colorScheme)
-                AppLayout.STAGE -> StageLayoutMockup(colorScheme)
-                AppLayout.FLOW -> FlowLayoutMockup(colorScheme)
+                AppLayout.EXPRESS -> CanvasLayoutMockup(colorScheme)
+                AppLayout.COMFORTABLE -> StudioLayoutMockup(colorScheme)
+                AppLayout.FOCUSED -> StageLayoutMockup(colorScheme)
+                AppLayout.DYNAMIC -> FlowLayoutMockup(colorScheme)
             }
         }
 
         Text(
             text = when (layout) {
-                AppLayout.CANVAS -> "Canvas"
-                AppLayout.STUDIO -> "Studio"
-                AppLayout.STAGE -> "Stage"
-                AppLayout.FLOW -> "Flow"
+                AppLayout.EXPRESS -> "Canvas"
+                AppLayout.COMFORTABLE -> "Studio"
+                AppLayout.FOCUSED -> "Stage"
+                AppLayout.DYNAMIC -> "Flow"
             },
             style = MaterialTheme.typography.labelMedium,
             color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,

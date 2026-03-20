@@ -70,22 +70,14 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showContentSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Content & Filters",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Content & Filters",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "Localization", colorScheme = colorScheme) {
+        SettingsGroup(title = "Localization", colorScheme = colorScheme, searchKeywords = listOf("language", "country", "local", "region")) {
             var showLanguageDialog by remember { mutableStateOf(false) }
             SettingsNavigationWithIcon(
                 title = "Default content language",
@@ -131,7 +123,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Content Filtering", colorScheme = colorScheme) {
+        SettingsGroup(title = "Content Filtering", colorScheme = colorScheme, searchKeywords = listOf("filter", "content", "explicit", "blocked", "hidden")) {
             SettingsToggleWithIcon(
                 title = "Hide explicit content",
                 subtitle = "Filters songs marked as explicit from search and recommendations",
@@ -153,7 +145,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Artist Page Display", colorScheme = colorScheme) {
+        SettingsGroup(title = "Artist Page Display", colorScheme = colorScheme, searchKeywords = listOf("artist", "page", "display", "sort", "layout")) {
             SettingsToggleWithIcon(
                 title = "Show artist description",
                 subtitle = "Displays artist biography and description on artist pages",
@@ -184,7 +176,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Artist Sources", colorScheme = colorScheme) {
+        SettingsGroup(title = "Artist Sources", colorScheme = colorScheme, searchKeywords = listOf("artist", "source", "icon", "banner")) {
             var showIconSourceDialog by remember { mutableStateOf(false) }
             SettingsNavigationWithIcon(
                 title = "Artist icon source",
@@ -288,7 +280,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Language & Proxy", colorScheme = colorScheme) {
+        SettingsGroup(title = "Language & Proxy", colorScheme = colorScheme, searchKeywords = listOf("language", "proxy", "vpn", "region")) {
             SettingsNavigationWithIcon(
                 title = "App language",
                 subtitle = "Coming Soon - UI language settings",
@@ -308,7 +300,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Lyrics", colorScheme = colorScheme) {
+        SettingsGroup(title = "Lyrics", colorScheme = colorScheme, searchKeywords = listOf("lyrics", "sync", "translation", "ai")) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "Providers: drag to reorder, toggle to enable/disable",
@@ -322,7 +314,7 @@ fun ContentSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Home Page", colorScheme = colorScheme) {
+        SettingsGroup(title = "Home Page", colorScheme = colorScheme, searchKeywords = listOf("home", "page", "sections", "quick", "picks")) {
             SettingsToggleWithIcon(
                 title = "Randomize home order",
                 subtitle = "Randomizes the order of content sections on the home screen",

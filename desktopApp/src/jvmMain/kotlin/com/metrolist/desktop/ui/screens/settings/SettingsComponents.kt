@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.metrolist.desktop.constants.SliderStyle
 import com.metrolist.desktop.state.AppState
+import com.metrolist.desktop.ui.screens.settings.LocalSettingsSearchQuery
 import com.metrolist.desktop.state.CountryCodeToName
 import com.metrolist.desktop.state.LanguageCodeToName
 import com.metrolist.shared.model.LyricsProvider
@@ -183,8 +184,19 @@ fun SettingsNavigationWithIcon(
 fun SettingsGroup(
     title: String,
     colorScheme: ColorScheme,
+    searchKeywords: List<String> = emptyList(),
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val searchQuery = LocalSettingsSearchQuery.current.lowercase()
+    
+    // Filter based on search query
+    if (searchQuery.isNotEmpty() && searchKeywords.isNotEmpty()) {
+        val matches = searchKeywords.any { keyword ->
+            keyword.lowercase().contains(searchQuery) || searchQuery.contains(keyword.lowercase())
+        }
+        if (!matches) return
+    }
+    
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
             title,

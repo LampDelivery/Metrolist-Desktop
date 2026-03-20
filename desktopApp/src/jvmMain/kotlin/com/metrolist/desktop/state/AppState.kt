@@ -51,10 +51,10 @@ enum class ThemeMode {
 }
 
 enum class AppLayout {
-    CANVAS,      // Clean foundation - sidebar + main content + bottom player
-    STUDIO,      // Expanded workspace - wide sidebar with search, floating controls
-    STAGE,       // Performance focused - player in topbar, search in sidebar
-    FLOW         // Streamlined experience - external player controls, continuous flow
+    EXPRESS,      // Clean foundation - sidebar + main content + bottom player (default)
+    COMFORTABLE,  // Expanded sidebar, search at top, no top bar, floating controls
+    FOCUSED,      // Player in top bar, search in sidebar below player
+    DYNAMIC       // Player in top bar, search in top left corner
 }
 
 data class NavItem(val id: String, val label: String, val visible: Boolean = true)
@@ -452,14 +452,13 @@ private var libraryViewTypeInternal by mutableStateOf(
     var swapPlayerControls by mutableStateOf(prefs.getBoolean("SWAP_PLAYER_CONTROLS", false))
     var animatedGradient by mutableStateOf(prefs.getBoolean("ANIMATED_GRADIENT", true))
 
-    // --- Cider-inspired UI customizations ---
-    // App layout: matches Cider's design options
+    // --- Material 3 Expressive Layout ---
     var appLayout by mutableStateOf(
-        when (prefs.get("APP_LAYOUT", "CANVAS")) {
-            "STUDIO" -> AppLayout.STUDIO
-            "STAGE" -> AppLayout.STAGE
-            "FLOW" -> AppLayout.FLOW
-            else -> AppLayout.CANVAS
+        when (prefs.get("APP_LAYOUT", "EXPRESS")) {
+            "COMFORTABLE" -> AppLayout.COMFORTABLE
+            "FOCUSED" -> AppLayout.FOCUSED
+            "DYNAMIC" -> AppLayout.DYNAMIC
+            else -> AppLayout.EXPRESS
         }
     )
     fun updateAppLayout(layout: AppLayout) {

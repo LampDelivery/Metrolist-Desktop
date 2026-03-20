@@ -64,7 +64,7 @@ fun HomeScreen(colorScheme: ColorScheme) {
         LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 48.dp, bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // Chips Row
             item {

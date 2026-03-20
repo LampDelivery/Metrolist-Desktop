@@ -70,22 +70,14 @@ fun PrivacySettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showPrivacySettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Privacy",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Privacy",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "History & Data", colorScheme = colorScheme) {
+        SettingsGroup(title = "History & Data", colorScheme = colorScheme, searchKeywords = listOf("history", "data", "privacy", "cache", "analytics")) {
             SettingsToggleWithIcon(
                 title = "Pause listen history",
                 subtitle = "Stops recording played songs to your local history",

@@ -26,22 +26,14 @@ fun StorageSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showStorageSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Storage",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Storage",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "Cache Management", colorScheme = colorScheme) {
+        SettingsGroup(title = "Cache Management", colorScheme = colorScheme, searchKeywords = listOf("cache", "storage", "download", "offline", "clear")) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "Cache and storage management",

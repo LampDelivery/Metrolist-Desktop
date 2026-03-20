@@ -45,22 +45,14 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState())
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { AppState.showPlayerSettings = false }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Player",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        Text(
+            "Player",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        SettingsGroup(title = "Audio Quality", colorScheme = colorScheme) {
+        SettingsGroup(title = "Audio Quality", colorScheme = colorScheme, searchKeywords = listOf("audio", "quality", "streaming", "download")) {
             var showQualityDialog by remember { mutableStateOf(false) }
             SettingsNavigationWithIcon(
                 title = "Audio quality",
@@ -107,7 +99,7 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Playback Behavior", colorScheme = colorScheme) {
+        SettingsGroup(title = "Playback Behavior", colorScheme = colorScheme, searchKeywords = listOf("playback", "repeat", "shuffle", "crossfade", "gapless", "behavior")) {
             SettingsToggleWithIcon(
                 title = "Persistent queue",
                 subtitle = "Remembers queue between app sessions",
@@ -138,7 +130,7 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Player Interface", colorScheme = colorScheme) {
+        SettingsGroup(title = "Player Interface", colorScheme = colorScheme, searchKeywords = listOf("interface", "player", "visualizer", "waveform", "lyrics", "progress")) {
             SettingsToggleWithIcon(
                 title = "New player design",
                 subtitle = "Enhanced player interface with improved layout",
@@ -178,7 +170,7 @@ fun PlayerSettingsScreen(colorScheme: ColorScheme) {
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsGroup(title = "Advanced", colorScheme = colorScheme) {
+        SettingsGroup(title = "Advanced", colorScheme = colorScheme, searchKeywords = listOf("advanced", "cache", "buffer", "audio", "codec")) {
             SettingsToggleWithIcon(
                 title = "Seek extra seconds",
                 subtitle = "Adds extra seconds when seeking forward/backward",
