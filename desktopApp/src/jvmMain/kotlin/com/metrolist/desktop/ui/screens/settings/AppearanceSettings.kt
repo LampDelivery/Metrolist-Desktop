@@ -155,15 +155,7 @@ fun AppearanceSettingsScreen(colorScheme: ColorScheme) {
                 onClick = { AppState.showLayoutDialog = true }
             )
 
-            // Full gradient background toggle
-            SettingsToggleWithIcon(
-                title = "Full Gradient Background",
-                subtitle = "Gradient covers the entire app (not just player)",
-                icon = Icons.Outlined.AutoAwesome,
-                checked = AppState.fullGradientBackground,
-                onCheckedChange = { AppState.toggleFullGradientBackground(it) },
-                colorScheme = colorScheme
-            )
+            // ...removed full gradient background toggle...
 
             // Persistent side drawer toggle
             SettingsToggleWithIcon(

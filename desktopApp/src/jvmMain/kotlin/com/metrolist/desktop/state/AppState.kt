@@ -450,7 +450,7 @@ private var libraryViewTypeInternal by mutableStateOf(
     var repeatMode by mutableStateOf(RepeatMode.OFF)
 
     var swapPlayerControls by mutableStateOf(prefs.getBoolean("SWAP_PLAYER_CONTROLS", false))
-    var animatedGradient by mutableStateOf(prefs.getBoolean("ANIMATED_GRADIENT", false))
+    var animatedGradient by mutableStateOf(prefs.getBoolean("ANIMATED_GRADIENT", true))
 
     // --- Cider-inspired UI customizations ---
     // App layout: matches Cider's design options

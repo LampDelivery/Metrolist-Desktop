@@ -353,24 +353,9 @@ fun ExpandedPlayerView() {
         val width = maxWidth
         val isNarrow = width < 850.dp
         
-        if (AppState.animatedGradient) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AnimatedGradientBackground(AppState.seedColor)
-                // Apply frosted blur in front of gradient only in expanded mode
-                if (AppState.fullGradientBackground) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(32.dp, BlurredEdgeTreatment.Unbounded)
-                            .background(Color.White.copy(alpha = 0.10f))
-                    ) {}
-                }
-            }
-        } else {
-            val gradientColors = remember(AppState.seedColor) {
-                PlayerColorExtractor.getGradientColors(AppState.seedColor)
-            }
-            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(gradientColors)))
+        // Always use animated gradient as default
+        Box(modifier = Modifier.fillMaxSize()) {
+            AnimatedGradientBackground(AppState.seedColor)
             // Apply frosted blur in front of gradient only in expanded mode
             if (AppState.fullGradientBackground) {
                 Box(
