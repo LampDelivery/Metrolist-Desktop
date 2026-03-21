@@ -32,3 +32,4 @@ rootProject.name = "Metrolist"
 include(":shared")
 include(":androidApp")
 include(":desktopApp")
+include(":innertube")

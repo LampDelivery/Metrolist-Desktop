@@ -35,6 +35,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
@@ -55,6 +56,7 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(project(":innertube"))
 
     // Core Android / Compose
     implementation(libs.activity)
@@ -63,6 +65,7 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.material3)
     implementation("androidx.compose.material:material-icons-core:1.7.6")
+    implementation("androidx.compose.material:material-icons-extended:1.7.6")
 
     // Dependency Injection
     implementation(libs.hilt)
@@ -89,6 +92,12 @@ dependencies {
     implementation(libs.shimmer)
     implementation(libs.palette)
     implementation(libs.materialKolor)
+    implementation(libs.compose.reorderable)
 
     implementation(libs.timber)
+    implementation(libs.coroutines.guava)
+    implementation(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.serialization.json)
+
+    coreLibraryDesugaring(libs.desugaring)
 }
