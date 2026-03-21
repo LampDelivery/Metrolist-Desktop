@@ -676,12 +676,7 @@ fun SettingsOverlay(colorScheme: ColorScheme) {
                         items(SettingsSection.entries, key = { it.ordinal }) { section ->
                             val isSelected = selectedSection == section
                             
-                            // Animated container for selection change
-                            val animatedContainerColor by animateColorAsState(
-                                targetValue = if (isSelected) colorScheme.secondaryContainer else Color.Transparent,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                label = "containerColor"
-                            )
+                            // Animated icon background for selection change
                             val animatedIconColor by animateColorAsState(
                                 targetValue = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -697,7 +692,6 @@ fun SettingsOverlay(colorScheme: ColorScheme) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(animatedContainerColor)
                                     .clickable { 
                                         selectedSection = section
                                         searchQuery = "" // Clear search when switching tabs
